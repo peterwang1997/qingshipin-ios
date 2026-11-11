@@ -182,6 +182,7 @@ final class ApiClient {
             completion(.success(nil)); return
         }
         var req = URLRequest(url: url)
+        req.timeoutInterval = 2.5
         req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         session.dataTask(with: req) { data, _, err in
             guard let data = data, err == nil else { completion(.success(nil)); return }

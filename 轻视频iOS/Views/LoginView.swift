@@ -51,7 +51,9 @@ struct LoginView: View {
                 }
                 .disabled(loading)
             }
-            .padding(UI.size(26))
+            .padding(.horizontal, UI.size(26))
+            .padding(.top, UI.size(64))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         }
     }
 

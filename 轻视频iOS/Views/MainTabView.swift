@@ -6,10 +6,11 @@ enum AppTab: Hashable {
 
 struct MainTabView: View {
     @State private var selected: AppTab = .home
+    @StateObject private var feedPlayback = FeedPlayback()
 
     var body: some View {
         TabView(selection: $selected) {
-            HomeView()
+            HomeView(playback: feedPlayback)
                 .tabItem { Label("首页", systemImage: "house.fill") }
                 .tag(AppTab.home)
             TheaterView()
@@ -26,6 +27,10 @@ struct MainTabView: View {
                 .tag(AppTab.profile)
         }
         .tint(.orange)
+        .onChange(of: selected) { tab in
+            // 切到别的标签页时，首页必须停声
+            feedPlayback.isVisible = (tab == .home)
+        }
     }
 }
 
@@ -88,6 +93,9 @@ struct ProfileView: View {
                     .cornerRadius(UI.size(10))
                     .padding(.top, UI.size(10))
             }
+            .padding(.horizontal, UI.hPad)
+            .padding(.top, UI.size(28))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .navigationTitle("我的")
         }
     }

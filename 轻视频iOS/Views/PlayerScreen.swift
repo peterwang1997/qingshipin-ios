@@ -37,11 +37,14 @@ final class PlayerEngine: ObservableObject {
     @Published var duration: Double = 0
     @Published var rate: Float = 1
     @Published var loaded = false
+    /// 当前视频是否为竖屏（竖屏视频默认铺满屏幕，不再上下留黑）
+    @Published var isPortraitVideo = false
 
     var onEpisodeEnd: (() -> Void)?
 
     private var timeObserver: Any?
     private var endObserver: NSObjectProtocol?
+    private var sizeObserver: NSKeyValueObservation?
     private var videoId: Int = 0
     private var lastReport: Double = 0
 
@@ -92,6 +95,16 @@ final class PlayerEngine: ObservableObject {
         player.replaceCurrentItem(with: item)
         player.rate = rate
 
+        // 记录视频朝向：竖屏视频（高 > 宽）在竖屏手机上铺满更自然
+        isPortraitVideo = false
+        sizeObserver?.invalidate()
+        sizeObserver = item.observe(\.presentationSize, options: [.initial, .new]) { [weak self] it, _ in
+            let size = it.presentationSize
+            guard size.width > 0, size.height > 0 else { return }
+            let portrait = size.height / size.width > 1.05
+            DispatchQueue.main.async { self?.isPortraitVideo = portrait }
+        }
+
         // 跨端续播
         ApiClient.shared.videoStatus(id: videoId) { [weak self] result in
             guard let self, case .success(let st) = result,
@@ -138,16 +151,21 @@ final class PlayerLayerContainer: UIView {
 
 struct VideoLayerView: UIViewRepresentable {
     let player: AVPlayer
+    /// .resizeAspect = 保证完整画面（横屏内容会上下留黑边）；.resizeAspectFill = 铺满全屏（裁掉超出部分）
+    var gravity: AVPlayerLayer.VideoGravity = .resizeAspect
 
     func makeUIView(context: Context) -> PlayerLayerContainer {
         let v = PlayerLayerContainer()
         v.backgroundColor = .black
         v.playerLayer.player = player
-        v.playerLayer.videoGravity = .resizeAspect
+        v.playerLayer.videoGravity = gravity
         return v
     }
     func updateUIView(_ uiView: PlayerLayerContainer, context: Context) {
         uiView.playerLayer.player = player
+        if uiView.playerLayer.videoGravity != gravity {
+            uiView.playerLayer.videoGravity = gravity
+        }
     }
 }
 
@@ -174,6 +192,9 @@ struct PlayerScreen: View {
     @State private var toast: String? = nil
     @State private var toastTask: Task<Void, Never>? = nil
 
+    /// nil = 跟随视频方向自动（竖屏铺满、横屏完整）；true = 强制铺满；false = 强制完整
+    @State private var forceFill: Bool? = nil
+
     private enum DragMode { case none, horizontal, vertical }
 
     private var currentEpisode: VideoItem? {
@@ -189,10 +210,16 @@ struct PlayerScreen: View {
         return t
     }
 
+    /// 当前画面填充方式
+    private var videoGravity: AVPlayerLayer.VideoGravity {
+        if let f = forceFill { return f ? .resizeAspectFill : .resizeAspect }
+        return engine.isPortraitVideo ? .resizeAspectFill : .resizeAspect
+    }
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            VideoLayerView(player: engine.player)
+            VideoLayerView(player: engine.player, gravity: videoGravity)
                 .ignoresSafeArea()
 
             // 手势层
@@ -330,6 +357,18 @@ struct PlayerScreen: View {
                         .frame(width: UI.size(46), height: UI.size(46))
                 }
             }
+            Button {
+                // 铺满 / 完整 一键切换，长按可恢复自动
+                let current = videoGravity == .resizeAspectFill
+                forceFill = current ? false : true
+                showToast(current ? "完整画面" : "铺满全屏")
+                scheduleAutoHide()
+            } label: {
+                Image(systemName: videoGravity == .resizeAspectFill ? "rectangle.compress.vertical" : "rectangle.expand.vertical")
+                    .font(.system(size: UI.font(18), weight: .semibold))
+                    .foregroundColor(.white)
+                    .frame(width: UI.size(46), height: UI.size(46))
+            }
             Button { showCastSheet = true } label: {
                 Image(systemName: "airplayvideo")
                     .font(.system(size: UI.font(19), weight: .semibold))
@@ -437,6 +476,10 @@ struct PlayerScreen: View {
 
     private func loadCurrent() {
         guard let e = currentEpisode else { return }
+        // 本地记一份「这部剧看到第几集」，续播不依赖服务端返回字段
+        if let sid = e.seriesId, sid > 0 {
+            ProgressStore.saveEpisode(e.id, seriesId: sid)
+        }
         engine.load(url: ApiClient.shared.streamUrl(e.id), videoId: e.id)
     }
 
