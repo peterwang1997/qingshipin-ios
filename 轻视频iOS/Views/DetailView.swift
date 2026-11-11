@@ -1,38 +1,69 @@
 import SwiftUI
 
-/// 剧集详情 / 选集：方块矩阵只显示集数数字，点击播放
+/// 剧集详情 / 选集：方块矩阵只显示集数数字，点击播放；自动高亮上次看到的一集
 struct DetailView: View {
     let seriesId: Int
     let title: String
     @Environment(\.dismiss) var dismiss
+
     @State private var episodes: [VideoItem] = []
     @State private var loading = true
-    @State private var play: VideoItem?
+    @State private var resumeIndex: Int = 0
+    @State private var hasResume = false
+    @State private var playIndex: Int? = nil
 
-    private let columns = [GridItem(.adaptive(minimum: 70), spacing: 10)]
+    private let columns = [GridItem(.adaptive(minimum: 64), spacing: 10)]
 
     var body: some View {
         NavigationView {
             ZStack {
                 Color(red: 0.08, green: 0.09, blue: 0.11).ignoresSafeArea()
+
                 if episodes.isEmpty {
                     if loading { ProgressView("加载中…").tint(.white) }
                     else { Text("暂无选集").foregroundColor(.gray) }
                 } else {
-                    ScrollView {
-                        LazyVGrid(columns: columns, spacing: 10) {
-                            ForEach(Array(episodes.enumerated()), id: \.element.id) { i, e in
-                                Button { play = e } label: {
-                                    Text(String(format: "%03d", e.episodeIndex ?? (i + 1)))
-                                        .frame(maxWidth: .infinity).frame(height: 52)
-                                        .background(Color.white.opacity(0.08))
-                                        .cornerRadius(8)
-                                        .foregroundColor(.white)
+                    VStack(spacing: 0) {
+                        if hasResume {
+                            Button {
+                                playIndex = resumeIndex
+                            } label: {
+                                HStack {
+                                    Image(systemName: "play.circle.fill")
+                                    Text("继续观看 第 \(index() + 1) 集")
+                                    Spacer()
+                                    Text("上次看到这里").font(.caption).opacity(0.8)
                                 }
-                                .buttonStyle(.plain)
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 16).padding(.vertical, 12)
+                                .background(Color.orange.opacity(0.85))
+                                .cornerRadius(10)
                             }
+                            .buttonStyle(.plain)
+                            .padding(.horizontal, 16)
+                            .padding(.top, 8)
                         }
-                        .padding()
+
+                        ScrollView {
+                            LazyVGrid(columns: columns, spacing: 10) {
+                                ForEach(Array(episodes.enumerated()), id: \.element.id) { i, e in
+                                    Button { playIndex = i } label: {
+                                        Text(String(format: "%03d", e.episodeIndex ?? (i + 1)))
+                                            .font(.system(size: 14, weight: i == resumeIndex ? .bold : .regular))
+                                            .frame(maxWidth: .infinity).frame(height: 48)
+                                            .background(i == resumeIndex ? Color.orange : Color.white.opacity(0.08))
+                                            .cornerRadius(8)
+                                            .foregroundColor(.white)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 8)
+                                                    .stroke(i == resumeIndex ? Color.orange : Color.clear, lineWidth: 1)
+                                            )
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                            .padding()
+                        }
                     }
                 }
             }
@@ -45,16 +76,36 @@ struct DetailView: View {
             }
         }
         .onAppear(perform: load)
-        .fullScreenCover(item: $play) { e in
-            PlayerHost(url: ApiClient.shared.streamUrl(e.id), title: e.title ?? title, videoId: e.id)
+        .fullScreenCover(isPresented: Binding(get: { playIndex != nil },
+                                              set: { if !$0 { playIndex = nil } })) {
+            PlayerHost(episodes: episodes,
+                       startIndex: playIndex ?? 0,
+                       title: title)
         }
     }
+
+    private func index() -> Int { max(0, min(resumeIndex, max(0, episodes.count - 1))) }
 
     private func load() {
         ApiClient.shared.seriesDetail(seriesId) { result in
             DispatchQueue.main.async {
                 loading = false
                 if case .success(let d) = result { episodes = d.episodes ?? [] }
+                loadProgress()
+            }
+        }
+    }
+
+    private func loadProgress() {
+        ApiClient.shared.seriesProgress(seriesId: seriesId) { result in
+            guard case .success(let p) = result, let p = p else { return }
+            DispatchQueue.main.async {
+                if let vid = p.videoId, let idx = episodes.firstIndex(where: { $0.id == vid }) {
+                    resumeIndex = idx; hasResume = true
+                } else if let ei = p.episodeIndex,
+                          let idx = episodes.firstIndex(where: { ($0.episodeIndex ?? 0) == ei }) {
+                    resumeIndex = idx; hasResume = true
+                }
             }
         }
     }

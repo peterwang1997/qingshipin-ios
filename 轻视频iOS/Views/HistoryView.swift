@@ -43,7 +43,7 @@ struct HistoryView: View {
         }
         .onAppear(perform: load)
         .fullScreenCover(item: $play) { e in
-            PlayerHost(url: ApiClient.shared.streamUrl(e.id), title: e.title ?? "", videoId: e.id)
+            PlayerHost(episodes: [e], startIndex: 0, title: e.title ?? "")
         }
     }
 
@@ -95,7 +95,7 @@ struct FavoritesView: View {
         }
         .onAppear(perform: load)
         .fullScreenCover(item: $play) { e in
-            PlayerHost(url: ApiClient.shared.streamUrl(e.id), title: e.title ?? "", videoId: e.id)
+            PlayerHost(episodes: [e], startIndex: 0, title: e.title ?? "")
         }
     }
 

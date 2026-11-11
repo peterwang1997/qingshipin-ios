@@ -30,7 +30,7 @@ struct HomeView: View {
             DetailView(seriesId: item.seriesId ?? 0, title: item.title ?? "")
         }
         .fullScreenCover(item: $showPlayer) { item in
-            PlayerHost(url: ApiClient.shared.streamUrl(item.id), title: item.title ?? "", videoId: item.id)
+            PlayerHost(episodes: [item], startIndex: 0, title: item.title ?? "")
         }
     }
 

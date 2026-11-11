@@ -1,10 +1,11 @@
 import SwiftUI
 
-/// 剧场：剧集封面网格，点击进选集
+/// 剧场：同一部剧的不同季汇总成一张卡片，点开后先选季，再选集
 struct TheaterView: View {
-    @State private var series: [Series] = []
+    @State private var groups: [SeriesGroup] = []
     @State private var loading = true
-    @State private var showDetail: Series?
+    @State private var showDetail: Series? = nil
+    @State private var showSeasons: SeriesGroup? = nil
 
     private let columns = [GridItem(.adaptive(minimum: 110), spacing: 14)]
 
@@ -12,14 +13,22 @@ struct TheaterView: View {
         NavigationView {
             ZStack {
                 Color(red: 0.08, green: 0.09, blue: 0.11).ignoresSafeArea()
-                if series.isEmpty {
+                if groups.isEmpty {
                     if loading { ProgressView("加载中…").tint(.white) }
                 } else {
                     ScrollView {
                         LazyVGrid(columns: columns, spacing: 18) {
-                            ForEach(series) { s in
-                                Button { showDetail = s } label: { SeriesCard(s: s) }
-                                    .buttonStyle(.plain)
+                            ForEach(groups) { g in
+                                Button {
+                                    if g.seasons.count > 1 {
+                                        showSeasons = g
+                                    } else if let s = g.seasons.first {
+                                        showDetail = s
+                                    }
+                                } label: {
+                                    GroupCard(g: g)
+                                }
+                                .buttonStyle(.plain)
                             }
                         }
                         .padding()
@@ -30,6 +39,12 @@ struct TheaterView: View {
             .navigationBarTitleDisplayMode(.inline)
         }
         .onAppear(perform: load)
+        .sheet(item: $showSeasons) { g in
+            SeasonPickerView(group: g) { s in
+                showSeasons = nil
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { showDetail = s }
+            }
+        }
         .fullScreenCover(item: $showDetail) { s in
             DetailView(seriesId: s.id, title: s.title ?? "")
         }
@@ -39,27 +54,141 @@ struct TheaterView: View {
         ApiClient.shared.series { result in
             DispatchQueue.main.async {
                 loading = false
-                if case .success(let list) = result { series = list }
+                if case .success(let list) = result { groups = Self.group(list) }
+            }
+        }
+    }
+
+    // MARK: - 分季聚合
+
+    static func group(_ list: [Series]) -> [SeriesGroup] {
+        var buckets: [String: [(Series, Int)]] = [:]
+        for s in list {
+            let info = parseSeason(s.title ?? "未命名")
+            buckets[info.base, default: []].append((s, info.season))
+        }
+        return buckets.map { (base, items) in
+            let sorted = items.sorted { $0.1 < $1.1 }.map { $0.0 }
+            return SeriesGroup(id: base, base: base, cover: sorted.first?.cover, seasons: sorted)
+        }
+        .sorted { $0.base.localizedCompare($1.base) == .orderedAscending }
+    }
+
+    /// 解析剧名里的季号，例如「规则怪谈：我百无禁忌第一季」→ (规则怪谈：我百无禁忌, 1)
+    static func parseSeason(_ title: String) -> (base: String, season: Int) {
+        var base = title
+        var season = 1
+        if let r = title.range(of: "第([一二三四五六七八九十0-9]+)季", options: .regularExpression) {
+            let token = String(title[r])
+                .replacingOccurrences(of: "第", with: "")
+                .replacingOccurrences(of: "季", with: "")
+            season = chineseToInt(token) ?? (Int(token) ?? 1)
+            base = title.replacingCharacters(in: r, with: "")
+        } else if let r = title.range(of: "[Ss]eason\\s*([0-9]+)", options: .regularExpression) {
+            let token = String(title[r]).filter { $0.isNumber }
+            season = Int(token) ?? 1
+            base = title.replacingCharacters(in: r, with: "")
+        } else if let r = title.range(of: "\\s*[Ss][0-9]+$", options: .regularExpression) {
+            let token = String(title[r]).filter { $0.isNumber }
+            season = Int(token) ?? 1
+            base = title.replacingCharacters(in: r, with: "")
+        }
+        base = base.trimmingCharacters(in: .whitespacesAndNewlines)
+        return (base.isEmpty ? title : base, season)
+    }
+
+    static func chineseToInt(_ s: String) -> Int? {
+        let map: [Character: Int] = ["一": 1, "二": 2, "三": 3, "四": 4, "五": 5,
+                                     "六": 6, "七": 7, "八": 8, "九": 9, "十": 10]
+        let chars = Array(s)
+        if chars.count == 1, let v = map[chars[0]] { return v }
+        if chars.count == 2, chars[0] == "十", let v = map[chars[1]] { return 10 + v }
+        if chars.count == 2, chars[1] == "十", let v = map[chars[0]] { return v * 10 }
+        if chars.count == 3, chars[1] == "十", let a = map[chars[0]], let b = map[chars[2]] {
+            return a * 10 + b
+        }
+        return Int(s)
+    }
+}
+
+struct SeriesGroup: Identifiable {
+    let id: String
+    let base: String
+    let cover: String?
+    let seasons: [Series]
+}
+
+struct GroupCard: View {
+    let g: SeriesGroup
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            ZStack(alignment: .topTrailing) {
+                AsyncImage(url: ApiClient.shared.thumbnail(g.cover)) { img in
+                    img.resizable().aspectRatio(contentMode: .fill)
+                } placeholder: {
+                    Color.gray
+                }
+                .frame(height: 150).clipped().cornerRadius(8)
+
+                if g.seasons.count > 1 {
+                    Text("\(g.seasons.count) 季")
+                        .font(.caption2).foregroundColor(.white)
+                        .padding(.horizontal, 6).padding(.vertical, 3)
+                        .background(Color.orange).cornerRadius(5)
+                        .padding(6)
+                }
+            }
+
+            Text(g.base)
+                .font(.footnote).foregroundColor(.white).lineLimit(2)
+            if let t = g.seasons.first?.totalEpisodes, g.seasons.count == 1 {
+                Text("全\(t)集").font(.caption2).foregroundColor(.gray)
+            } else if g.seasons.count > 1 {
+                Text("共 \(g.seasons.count) 季").font(.caption2).foregroundColor(.gray)
             }
         }
     }
 }
 
-struct SeriesCard: View {
-    let s: Series
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            AsyncImage(url: ApiClient.shared.thumbnail(s.cover)) { img in
-                img.resizable().aspectRatio(contentMode: .fill)
-            } placeholder: {
-                Color.gray
-            }
-            .frame(height: 150).clipped().cornerRadius(8)
+// MARK: - 季选择
 
-            Text(s.title ?? "")
-                .font(.footnote).foregroundColor(.white).lineLimit(2)
-            if let t = s.totalEpisodes {
-                Text("全\(t)集").font(.caption2).foregroundColor(.gray)
+struct SeasonPickerView: View {
+    let group: SeriesGroup
+    let onPick: (Series) -> Void
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        NavigationView {
+            ZStack {
+                Color(red: 0.08, green: 0.09, blue: 0.11).ignoresSafeArea()
+                List {
+                    ForEach(Array(group.seasons.enumerated()), id: \.element.id) { i, s in
+                        Button { onPick(s) } label: {
+                            HStack {
+                                Text("第 \(i + 1) 季")
+                                    .foregroundColor(.white)
+                                Text(s.title ?? "")
+                                    .font(.caption).foregroundColor(.gray).lineLimit(1)
+                                Spacer()
+                                if let t = s.totalEpisodes {
+                                    Text("\(t) 集").font(.caption).foregroundColor(.gray)
+                                }
+                                Image(systemName: "chevron.right").foregroundColor(.gray)
+                            }
+                            .padding(.vertical, 6)
+                        }
+                        .listRowBackground(Color.white.opacity(0.05))
+                    }
+                }
+                .listStyle(.plain)
+            }
+            .navigationTitle(group.base)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("关闭") { dismiss() }.foregroundColor(.orange)
+                }
             }
         }
     }
