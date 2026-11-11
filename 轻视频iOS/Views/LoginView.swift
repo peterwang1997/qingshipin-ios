@@ -13,47 +13,45 @@ struct LoginView: View {
                                     Color(red: 0.14, green: 0.10, blue: 0.22)],
                            startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea()
-            VStack(spacing: 20) {
+            VStack(spacing: UI.size(22)) {
                 Text("轻视频")
-                    .font(.system(size: 40, weight: .bold))
+                    .font(.system(size: UI.display, weight: .bold))
                     .foregroundColor(.white)
                 Text("服务器：\(auth.server)")
-                    .font(.footnote)
+                    .font(.system(size: UI.fine))
                     .foregroundColor(.gray)
 
                 TextField("账号", text: $username)
+                    .font(.system(size: UI.body))
                     .textInputAutocapitalization(.never)
-                    .padding()
+                    .padding(UI.size(16))
                     .background(Color.white.opacity(0.12))
-                    .cornerRadius(10)
+                    .cornerRadius(UI.size(12))
                     .foregroundColor(.white)
 
                 SecureField("密码", text: $password)
-                    .padding()
+                    .font(.system(size: UI.body))
+                    .padding(UI.size(16))
                     .background(Color.white.opacity(0.12))
-                    .cornerRadius(10)
+                    .cornerRadius(UI.size(12))
                     .foregroundColor(.white)
 
                 if let error = error {
-                    Text(error).font(.footnote).foregroundColor(.red)
+                    Text(error).font(.system(size: UI.note)).foregroundColor(.red)
                 }
 
                 Button(action: doLogin) {
                     Text(loading ? "登录中…" : "登 录")
+                        .font(.system(size: UI.font(19), weight: .semibold))
                         .frame(maxWidth: .infinity)
-                        .padding()
+                        .padding(UI.size(16))
                         .background(Color.orange)
                         .foregroundColor(.white)
-                        .cornerRadius(10)
+                        .cornerRadius(UI.size(12))
                 }
                 .disabled(loading)
             }
-            .padding(24)
-        }
-        .onAppear {
-            ApiClient.shared.detectEnvironment { server in
-                auth.server = server
-            }
+            .padding(UI.size(26))
         }
     }
 

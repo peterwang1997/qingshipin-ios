@@ -29,6 +29,13 @@ final class AuthStore: ObservableObject {
         self.server = server
     }
 
+    /// 自动识别或手动切换后，同步服务器地址（不涉及登录态）
+    func updateServer(_ server: String) {
+        UserDefaults.standard.set(server, forKey: "qs_server")
+        ApiClient.shared.baseUrl = server
+        self.server = server
+    }
+
     func logout() {
         UserDefaults.standard.removeObject(forKey: "qs_token")
         UserDefaults.standard.removeObject(forKey: "qs_username")

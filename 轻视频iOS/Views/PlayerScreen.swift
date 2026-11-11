@@ -236,47 +236,47 @@ struct PlayerScreen: View {
 
             // 拖动进度预览
             if let p = seekPreview {
-                VStack(spacing: 6) {
+                VStack(spacing: UI.size(7)) {
                     Text(timeText(p))
-                        .font(.system(size: 30, weight: .semibold, design: .rounded))
+                        .font(.system(size: UI.font(32), weight: .semibold, design: .rounded))
                         .foregroundColor(.white)
                     Text("松手跳转")
-                        .font(.caption)
+                        .font(.system(size: UI.fine))
                         .foregroundColor(.gray)
                 }
-                .padding(20)
+                .padding(UI.size(22))
                 .background(Color.black.opacity(0.65))
-                .cornerRadius(14)
+                .cornerRadius(UI.size(15))
             }
 
             // 上下滑换集提示
             if dragMode == .vertical {
                 VStack {
                     Spacer()
-                    HStack(spacing: 10) {
+                    HStack(spacing: UI.size(10)) {
                         Image(systemName: "chevron.up")
                         Text("上下滑动切换集数")
                         Image(systemName: "chevron.down")
                     }
-                    .font(.footnote)
+                    .font(.system(size: UI.fine))
                     .foregroundColor(.white)
-                    .padding(.horizontal, 16).padding(.vertical, 10)
+                    .padding(.horizontal, UI.size(18)).padding(.vertical, UI.size(11))
                     .background(Color.black.opacity(0.6))
-                    .cornerRadius(20)
-                    Spacer().frame(height: 90)
+                    .cornerRadius(UI.size(22))
+                    Spacer().frame(height: UI.size(100))
                 }
             }
 
             // 轻提示
             if let t = toast {
                 VStack {
-                    Spacer().frame(height: 60)
+                    Spacer().frame(height: UI.size(66))
                     Text(t)
-                        .font(.footnote)
+                        .font(.system(size: UI.fine))
                         .foregroundColor(.white)
-                        .padding(.horizontal, 14).padding(.vertical, 8)
+                        .padding(.horizontal, UI.size(16)).padding(.vertical, UI.size(9))
                         .background(Color.black.opacity(0.7))
-                        .cornerRadius(8)
+                        .cornerRadius(UI.size(9))
                     Spacer()
                 }
             }
@@ -310,36 +310,36 @@ struct PlayerScreen: View {
     // MARK: 顶栏
 
     private var topBar: some View {
-        HStack(spacing: 16) {
+        HStack(spacing: UI.size(14)) {
             Button { onClose() } label: {
                 Image(systemName: "xmark")
-                    .font(.system(size: 17, weight: .semibold))
+                    .font(.system(size: UI.font(18), weight: .semibold))
                     .foregroundColor(.white)
-                    .frame(width: 40, height: 40)
+                    .frame(width: UI.size(46), height: UI.size(46))
             }
             Text(displayTitle)
-                .font(.subheadline).fontWeight(.medium)
+                .font(.system(size: UI.body, weight: .medium))
                 .foregroundColor(.white)
                 .lineLimit(1)
             Spacer()
             if episodes.count > 1 {
                 Button { showEpisodeSheet = true } label: {
                     Image(systemName: "list.bullet")
-                        .font(.system(size: 18, weight: .semibold))
+                        .font(.system(size: UI.font(19), weight: .semibold))
                         .foregroundColor(.white)
-                        .frame(width: 40, height: 40)
+                        .frame(width: UI.size(46), height: UI.size(46))
                 }
             }
             Button { showCastSheet = true } label: {
                 Image(systemName: "airplayvideo")
-                    .font(.system(size: 18, weight: .semibold))
+                    .font(.system(size: UI.font(19), weight: .semibold))
                     .foregroundColor(.white)
-                    .frame(width: 40, height: 40)
+                    .frame(width: UI.size(46), height: UI.size(46))
             }
         }
-        .padding(.horizontal, 6)
-        .padding(.top, 6)
-        .padding(.bottom, 10)
+        .padding(.horizontal, UI.size(8))
+        .padding(.top, UI.size(8))
+        .padding(.bottom, UI.size(12))
         .background(
             LinearGradient(colors: [Color.black.opacity(0.75), Color.black.opacity(0.0)],
                            startPoint: .top, endPoint: .bottom)
@@ -349,14 +349,14 @@ struct PlayerScreen: View {
     // MARK: 底部控制条
 
     private var bottomBar: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: UI.size(6)) {
             GeometryReader { geo in
                 ZStack(alignment: .leading) {
-                    Capsule().fill(Color.white.opacity(0.25)).frame(height: 4)
+                    Capsule().fill(Color.white.opacity(0.25)).frame(height: UI.size(5))
                     Capsule().fill(Color.orange)
-                        .frame(width: max(0, CGFloat(engine.duration > 0 ? engine.currentTime / engine.duration : 0)) * geo.size.width, height: 4)
+                        .frame(width: max(0, CGFloat(engine.duration > 0 ? engine.currentTime / engine.duration : 0)) * geo.size.width, height: UI.size(5))
                 }
-                .frame(height: 4)
+                .frame(height: UI.size(5))
                 .contentShape(Rectangle())
                 .gesture(
                     DragGesture(minimumDistance: 0)
@@ -373,28 +373,28 @@ struct PlayerScreen: View {
                         }
                 )
             }
-            .frame(height: 18)
+            .frame(height: UI.size(22))
 
             HStack {
                 Text(timeText(engine.currentTime))
-                    .font(.caption).foregroundColor(.white.opacity(0.85))
+                    .font(.system(size: UI.fine)).foregroundColor(.white.opacity(0.85))
                 Spacer()
                 Button {
                     engine.isPlaying ? engine.pause() : engine.play()
                     scheduleAutoHide()
                 } label: {
                     Image(systemName: engine.isPlaying ? "pause.fill" : "play.fill")
-                        .font(.system(size: 20))
+                        .font(.system(size: UI.font(22)))
                         .foregroundColor(.white)
-                        .frame(width: 44, height: 44)
+                        .frame(width: UI.size(48), height: UI.size(48))
                 }
                 Spacer()
                 Text(timeText(engine.duration))
-                    .font(.caption).foregroundColor(.white.opacity(0.85))
+                    .font(.system(size: UI.fine)).foregroundColor(.white.opacity(0.85))
             }
         }
-        .padding(.horizontal, 16)
-        .padding(.bottom, 20)
+        .padding(.horizontal, UI.hPad)
+        .padding(.bottom, UI.size(24))
         .background(
             LinearGradient(colors: [Color.black.opacity(0.0), Color.black.opacity(0.75)],
                            startPoint: .top, endPoint: .bottom)
@@ -519,29 +519,29 @@ struct EpisodeMatrixView: View {
 
     @Environment(\.dismiss) private var dismiss
 
-    private let columns = [GridItem(.adaptive(minimum: 64), spacing: 10)]
+    private let columns = [GridItem(.adaptive(minimum: UI.size(70)), spacing: UI.size(11))]
 
     var body: some View {
         NavigationView {
             ZStack {
                 Color(red: 0.08, green: 0.09, blue: 0.11).ignoresSafeArea()
                 ScrollView {
-                    LazyVGrid(columns: columns, spacing: 10) {
+                    LazyVGrid(columns: columns, spacing: UI.size(11)) {
                         ForEach(Array(episodes.enumerated()), id: \.element.id) { i, e in
                             Button {
                                 onSelect(i)
                             } label: {
                                 Text(String(format: "%03d", e.episodeIndex ?? (i + 1)))
-                                    .font(.system(size: 14, weight: i == currentIndex ? .bold : .regular))
-                                    .frame(maxWidth: .infinity).frame(height: 48)
+                                    .font(.system(size: UI.font(15.5), weight: i == currentIndex ? .bold : .regular))
+                                    .frame(maxWidth: .infinity).frame(height: UI.size(54))
                                     .background(i == currentIndex ? Color.orange : Color.white.opacity(0.08))
-                                    .cornerRadius(8)
+                                    .cornerRadius(UI.size(9))
                                     .foregroundColor(.white)
                             }
                             .buttonStyle(.plain)
                         }
                     }
-                    .padding()
+                    .padding(UI.hPad)
                 }
             }
             .navigationTitle("选集")

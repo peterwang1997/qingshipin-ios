@@ -31,13 +31,13 @@ jobs:
 
       - name: Show scheme
         run: |
-          xcodebuild -project 轻视频iOS.xcodeproj -list
+          xcodebuild -project Qingshipin.xcodeproj -list
 
       - name: Build unsigned
         run: |
           xcodebuild \
-            -project 轻视频iOS.xcodeproj \
-            -scheme 轻视频iOS \
+            -project Qingshipin.xcodeproj \
+            -scheme Qingshipin \
             -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
@@ -57,11 +57,11 @@ jobs:
           mkdir -p payload/Payload
           cp -R "$APP" payload/Payload/
           cd payload
-          zip -r ../轻视频iOS-unsigned.ipa Payload
+          zip -r ../Qingshipin-unsigned.ipa Payload
 
       - name: Upload ipa artifact
         uses: actions/upload-artifact@v4
         with:
-          name: 轻视频iOS-unsigned
-          path: 轻视频iOS-unsigned.ipa
+          name: Qingshipin-unsigned
+          path: Qingshipin-unsigned.ipa
           if-no-files-found: error

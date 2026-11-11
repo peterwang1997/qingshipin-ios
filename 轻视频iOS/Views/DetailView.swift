@@ -12,7 +12,7 @@ struct DetailView: View {
     @State private var hasResume = false
     @State private var playIndex: Int? = nil
 
-    private let columns = [GridItem(.adaptive(minimum: 64), spacing: 10)]
+    private let columns = [GridItem(.adaptive(minimum: UI.size(70)), spacing: UI.size(11))]
 
     var body: some View {
         NavigationView {
@@ -30,39 +30,43 @@ struct DetailView: View {
                             } label: {
                                 HStack {
                                     Image(systemName: "play.circle.fill")
+                                        .font(.system(size: UI.font(20)))
                                     Text("继续观看 第 \(index() + 1) 集")
+                                        .font(.system(size: UI.body))
                                     Spacer()
-                                    Text("上次看到这里").font(.caption).opacity(0.8)
+                                    Text("上次看到这里")
+                                        .font(.system(size: UI.fine))
+                                        .opacity(0.8)
                                 }
                                 .foregroundColor(.white)
-                                .padding(.horizontal, 16).padding(.vertical, 12)
+                                .padding(.horizontal, UI.size(16)).padding(.vertical, UI.size(14))
                                 .background(Color.orange.opacity(0.85))
-                                .cornerRadius(10)
+                                .cornerRadius(UI.size(11))
                             }
                             .buttonStyle(.plain)
-                            .padding(.horizontal, 16)
-                            .padding(.top, 8)
+                            .padding(.horizontal, UI.hPad)
+                            .padding(.top, UI.size(10))
                         }
 
                         ScrollView {
-                            LazyVGrid(columns: columns, spacing: 10) {
+                            LazyVGrid(columns: columns, spacing: UI.size(11)) {
                                 ForEach(Array(episodes.enumerated()), id: \.element.id) { i, e in
                                     Button { playIndex = i } label: {
                                         Text(String(format: "%03d", e.episodeIndex ?? (i + 1)))
-                                            .font(.system(size: 14, weight: i == resumeIndex ? .bold : .regular))
-                                            .frame(maxWidth: .infinity).frame(height: 48)
+                                            .font(.system(size: UI.font(15.5), weight: i == resumeIndex ? .bold : .regular))
+                                            .frame(maxWidth: .infinity).frame(height: UI.size(54))
                                             .background(i == resumeIndex ? Color.orange : Color.white.opacity(0.08))
-                                            .cornerRadius(8)
+                                            .cornerRadius(UI.size(9))
                                             .foregroundColor(.white)
                                             .overlay(
-                                                RoundedRectangle(cornerRadius: 8)
+                                                RoundedRectangle(cornerRadius: UI.size(9))
                                                     .stroke(i == resumeIndex ? Color.orange : Color.clear, lineWidth: 1)
                                             )
                                     }
                                     .buttonStyle(.plain)
                                 }
                             }
-                            .padding()
+                            .padding(UI.hPad)
                         }
                     }
                 }

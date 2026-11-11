@@ -198,18 +198,18 @@ struct CastSheet: View {
         NavigationView {
             ZStack {
                 Color(red: 0.08, green: 0.09, blue: 0.11).ignoresSafeArea()
-                VStack(spacing: 16) {
+                VStack(spacing: UI.size(18)) {
                     Text("把「\(title)」投到电视")
-                        .font(.subheadline).foregroundColor(.gray)
-                        .padding(.top, 8)
+                        .font(.system(size: UI.note)).foregroundColor(.gray)
+                        .padding(.top, UI.size(10))
 
                     if caster.devices.isEmpty {
-                        VStack(spacing: 10) {
+                        VStack(spacing: UI.size(12)) {
                             if caster.discovering { ProgressView().tint(.white) }
-                            Text(caster.status).font(.footnote).foregroundColor(.gray)
-                                .multilineTextAlignment(.center).padding(.horizontal, 24)
+                            Text(caster.status).font(.system(size: UI.fine)).foregroundColor(.gray)
+                                .multilineTextAlignment(.center).padding(.horizontal, UI.size(26))
                         }
-                        .padding(.top, 30)
+                        .padding(.top, UI.size(32))
                     } else {
                         List(caster.devices) { d in
                             Button {
@@ -220,11 +220,11 @@ struct CastSheet: View {
                             } label: {
                                 HStack {
                                     Image(systemName: "tv").foregroundColor(.orange)
-                                    Text(d.name).foregroundColor(.white)
+                                    Text(d.name).font(.system(size: UI.body)).foregroundColor(.white)
                                     Spacer()
                                     Image(systemName: "chevron.right").foregroundColor(.gray)
                                 }
-                                .padding(.vertical, 6)
+                                .padding(.vertical, UI.size(8))
                             }
                             .listRowBackground(Color.white.opacity(0.05))
                         }
@@ -235,16 +235,17 @@ struct CastSheet: View {
                         caster.discover()
                     } label: {
                         Text(caster.discovering ? "搜索中…" : "重新搜索设备")
-                            .frame(maxWidth: .infinity).padding()
-                            .background(Color.orange).foregroundColor(.white).cornerRadius(10)
+                            .font(.system(size: UI.body, weight: .medium))
+                            .frame(maxWidth: .infinity).padding(UI.size(15))
+                            .background(Color.orange).foregroundColor(.white).cornerRadius(UI.size(11))
                     }
-                    .padding(.horizontal, 20)
+                    .padding(.horizontal, UI.hPad)
                     .disabled(caster.discovering)
 
-                    if let message {
-                        Text(message).font(.footnote)
+                    if let message = message {
+                        Text(message).font(.system(size: UI.fine))
                             .foregroundColor(message.contains("成功") ? .green : .red)
-                            .padding(.bottom, 8)
+                            .padding(.bottom, UI.size(10))
                     }
                 }
             }

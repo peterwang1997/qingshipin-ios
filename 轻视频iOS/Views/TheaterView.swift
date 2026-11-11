@@ -7,7 +7,7 @@ struct TheaterView: View {
     @State private var showDetail: Series? = nil
     @State private var showSeasons: SeriesGroup? = nil
 
-    private let columns = [GridItem(.adaptive(minimum: 110), spacing: 14)]
+    private let columns = [GridItem(.adaptive(minimum: UI.size(125)), spacing: UI.size(15))]
 
     var body: some View {
         NavigationView {
@@ -17,7 +17,7 @@ struct TheaterView: View {
                     if loading { ProgressView("加载中…").tint(.white) }
                 } else {
                     ScrollView {
-                        LazyVGrid(columns: columns, spacing: 18) {
+                        LazyVGrid(columns: columns, spacing: UI.size(19)) {
                             ForEach(groups) { g in
                                 Button {
                                     if g.seasons.count > 1 {
@@ -31,7 +31,7 @@ struct TheaterView: View {
                                 .buttonStyle(.plain)
                             }
                         }
-                        .padding()
+                        .padding(UI.hPad)
                     }
                 }
             }
@@ -122,30 +122,30 @@ struct GroupCard: View {
     let g: SeriesGroup
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: UI.size(7)) {
             ZStack(alignment: .topTrailing) {
                 AsyncImage(url: ApiClient.shared.thumbnail(g.cover)) { img in
                     img.resizable().aspectRatio(contentMode: .fill)
                 } placeholder: {
                     Color.gray
                 }
-                .frame(height: 150).clipped().cornerRadius(8)
+                .frame(height: UI.size(165)).clipped().cornerRadius(UI.size(9))
 
                 if g.seasons.count > 1 {
                     Text("\(g.seasons.count) 季")
-                        .font(.caption2).foregroundColor(.white)
-                        .padding(.horizontal, 6).padding(.vertical, 3)
-                        .background(Color.orange).cornerRadius(5)
-                        .padding(6)
+                        .font(.system(size: UI.fine)).foregroundColor(.white)
+                        .padding(.horizontal, UI.size(7)).padding(.vertical, UI.size(4))
+                        .background(Color.orange).cornerRadius(UI.size(6))
+                        .padding(UI.size(7))
                 }
             }
 
             Text(g.base)
-                .font(.footnote).foregroundColor(.white).lineLimit(2)
+                .font(.system(size: UI.font(16))).foregroundColor(.white).lineLimit(2)
             if let t = g.seasons.first?.totalEpisodes, g.seasons.count == 1 {
-                Text("全\(t)集").font(.caption2).foregroundColor(.gray)
+                Text("全\(t)集").font(.system(size: UI.fine)).foregroundColor(.gray)
             } else if g.seasons.count > 1 {
-                Text("共 \(g.seasons.count) 季").font(.caption2).foregroundColor(.gray)
+                Text("共 \(g.seasons.count) 季").font(.system(size: UI.fine)).foregroundColor(.gray)
             }
         }
     }
@@ -167,16 +167,17 @@ struct SeasonPickerView: View {
                         Button { onPick(s) } label: {
                             HStack {
                                 Text("第 \(i + 1) 季")
+                                    .font(.system(size: UI.body))
                                     .foregroundColor(.white)
                                 Text(s.title ?? "")
-                                    .font(.caption).foregroundColor(.gray).lineLimit(1)
+                                    .font(.system(size: UI.fine)).foregroundColor(.gray).lineLimit(1)
                                 Spacer()
                                 if let t = s.totalEpisodes {
-                                    Text("\(t) 集").font(.caption).foregroundColor(.gray)
+                                    Text("\(t) 集").font(.system(size: UI.fine)).foregroundColor(.gray)
                                 }
                                 Image(systemName: "chevron.right").foregroundColor(.gray)
                             }
-                            .padding(.vertical, 6)
+                            .padding(.vertical, UI.size(8))
                         }
                         .listRowBackground(Color.white.opacity(0.05))
                     }

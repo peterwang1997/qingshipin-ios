@@ -31,19 +31,77 @@ struct MainTabView: View {
 
 struct ProfileView: View {
     @EnvironmentObject var auth: AuthStore
+    @State private var detecting = false
+
+    private var currentEnv: ServerEnv? { ServerEnv.match(auth.server) }
+
     var body: some View {
         NavigationView {
-            VStack(spacing: 16) {
+            VStack(spacing: UI.size(18)) {
                 Image(systemName: "person.circle.fill")
-                    .font(.system(size: 72)).foregroundColor(.gray)
-                Text(auth.username).font(.title2)
-                Text("服务器：\(auth.server)").font(.footnote).foregroundColor(.gray)
+                    .font(.system(size: UI.size(80)))
+                    .foregroundColor(.gray)
+
+                Text(auth.username)
+                    .font(.system(size: UI.title, weight: .semibold))
+
+                VStack(spacing: UI.size(10)) {
+                    Text("服务器：\(auth.server)")
+                        .font(.system(size: UI.fine))
+                        .foregroundColor(.gray)
+
+                    Text(detecting ? "正在检测网络…" : "当前网络：\(currentEnv?.title ?? "未识别")")
+                        .font(.system(size: UI.note))
+                        .foregroundColor(.orange)
+
+                    HStack(spacing: UI.size(12)) {
+                        Button("重新检测") { redetect() }
+                            .padding(.horizontal, UI.size(20))
+                            .padding(.vertical, UI.size(11))
+                            .background(Color.white.opacity(0.14))
+                            .foregroundColor(.white)
+                            .cornerRadius(UI.size(10))
+                            .disabled(detecting)
+
+                        Menu {
+                            Button("内网（家里）") { switchTo(.internalNet) }
+                            Button("外网（远程）") { switchTo(.externalNet) }
+                        } label: {
+                            Text("手动切换")
+                                .padding(.horizontal, UI.size(20))
+                                .padding(.vertical, UI.size(11))
+                                .background(Color.orange.opacity(0.85))
+                                .foregroundColor(.white)
+                                .cornerRadius(UI.size(10))
+                        }
+                    }
+                    .font(.system(size: UI.note))
+                }
+                .padding(.top, UI.size(6))
+
                 Button("退出登录") { auth.logout() }
-                    .padding(.horizontal, 30).padding(.vertical, 12)
-                    .background(Color.red.opacity(0.8)).foregroundColor(.white)
-                    .cornerRadius(10)
+                    .font(.system(size: UI.note))
+                    .padding(.horizontal, UI.size(32))
+                    .padding(.vertical, UI.size(14))
+                    .background(Color.red.opacity(0.8))
+                    .foregroundColor(.white)
+                    .cornerRadius(UI.size(10))
+                    .padding(.top, UI.size(10))
             }
             .navigationTitle("我的")
         }
+    }
+
+    private func redetect() {
+        detecting = true
+        ApiClient.shared.refreshEnvironment { env in
+            auth.updateServer(env.rawValue)
+            detecting = false
+        }
+    }
+
+    private func switchTo(_ env: ServerEnv) {
+        ApiClient.shared.switchTo(env)
+        auth.updateServer(env.rawValue)
     }
 }

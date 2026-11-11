@@ -16,22 +16,22 @@ struct HistoryView: View {
                 } else {
                     List(videos) { v in
                         Button { play = v } label: {
-                            HStack(spacing: 12) {
+                            HStack(spacing: UI.size(13)) {
                                 AsyncImage(url: ApiClient.shared.thumbnail(v.cover)) { img in
                                     img.resizable().aspectRatio(contentMode: .fill)
                                 } placeholder: { Color.gray }
-                                .frame(width: 90, height: 60).clipped().cornerRadius(6)
+                                .frame(width: UI.size(98), height: UI.size(66)).clipped().cornerRadius(UI.size(7))
 
-                                VStack(alignment: .leading, spacing: 4) {
+                                VStack(alignment: .leading, spacing: UI.size(5)) {
                                     Text(v.title ?? v.filename ?? "")
-                                        .font(.subheadline).foregroundColor(.white).lineLimit(2)
+                                        .font(.system(size: UI.body)).foregroundColor(.white).lineLimit(2)
                                     if (v.seriesId ?? 0) > 0 {
-                                        Text("剧集").font(.caption2).foregroundColor(.gray)
+                                        Text("剧集").font(.system(size: UI.fine)).foregroundColor(.gray)
                                     }
                                 }
                                 Spacer()
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, UI.size(5))
                         }
                         .listRowBackground(Color.clear)
                     }
@@ -73,17 +73,17 @@ struct FavoritesView: View {
                 } else {
                     List(videos) { v in
                         Button { play = v } label: {
-                            HStack(spacing: 12) {
+                            HStack(spacing: UI.size(13)) {
                                 AsyncImage(url: ApiClient.shared.thumbnail(v.cover)) { img in
                                     img.resizable().aspectRatio(contentMode: .fill)
                                 } placeholder: { Color.gray }
-                                .frame(width: 90, height: 60).clipped().cornerRadius(6)
+                                .frame(width: UI.size(98), height: UI.size(66)).clipped().cornerRadius(UI.size(7))
 
                                 Text(v.title ?? v.filename ?? "")
-                                    .font(.subheadline).foregroundColor(.white).lineLimit(2)
+                                    .font(.system(size: UI.body)).foregroundColor(.white).lineLimit(2)
                                 Spacer()
                             }
-                            .padding(.vertical, 4)
+                            .padding(.vertical, UI.size(5))
                         }
                         .listRowBackground(Color.clear)
                     }

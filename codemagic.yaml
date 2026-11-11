@@ -6,8 +6,8 @@ workflows:
     environment:
       xcode: latest
       vars:
-        PROJECT: "轻视频iOS.xcodeproj"
-        SCHEME: "轻视频iOS"
+        PROJECT: "Qingshipin.xcodeproj"
+        SCHEME: "Qingshipin"
     scripts:
       - name: 安装 XcodeGen
         script: |
@@ -35,11 +35,15 @@ workflows:
       - name: 打包成 ipa
         script: |
           set -e
+          APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -1)
+          echo "app: $APP"
+          if [ -z "$APP" ]; then echo "未找到 .app"; exit 1; fi
           mkdir -p payload/Payload
-          cp -R build/Build/Products/Release-iphoneos/*.app payload/Payload/
+          cp -R "$APP" payload/Payload/
           cd payload
           zip -r -y ../qingshipin-unsigned.ipa Payload
           cd ..
           ls -lh qingshipin-unsigned.ipa
+          unzip -l qingshipin-unsigned.ipa | head -20
     artifacts:
       - qingshipin-unsigned.ipa
