@@ -17,7 +17,7 @@ on:
 
 jobs:
   build:
-    runs-on: macos-14
+    runs-on: macos-13   # Intel 版 macOS 打包机（账号不支持 arm64 时使用）
 
     steps:
       - name: Checkout
