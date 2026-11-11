@@ -152,7 +152,7 @@ final class PlayerLayerContainer: UIView {
 struct VideoLayerView: UIViewRepresentable {
     let player: AVPlayer
     /// .resizeAspect = 保证完整画面（横屏内容会上下留黑边）；.resizeAspectFill = 铺满全屏（裁掉超出部分）
-    var gravity: AVPlayerLayer.VideoGravity = .resizeAspect
+    var gravity: AVLayerVideoGravity = .resizeAspect
 
     func makeUIView(context: Context) -> PlayerLayerContainer {
         let v = PlayerLayerContainer()
@@ -211,7 +211,7 @@ struct PlayerScreen: View {
     }
 
     /// 当前画面填充方式
-    private var videoGravity: AVPlayerLayer.VideoGravity {
+    private var videoGravity: AVLayerVideoGravity {
         if let f = forceFill { return f ? .resizeAspectFill : .resizeAspect }
         return engine.isPortraitVideo ? .resizeAspectFill : .resizeAspect
     }
