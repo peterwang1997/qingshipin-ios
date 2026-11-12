@@ -2,7 +2,7 @@ workflows:
   ios-unsigned:
     name: 轻视频 iOS 未签名打包
     instance_type: mac_mini_m2
-    max_build_duration: 60
+    max_build_duration: 90
     environment:
       xcode: latest
       vars:
@@ -12,12 +12,15 @@ workflows:
       - name: 安装 XcodeGen
         script: |
           set -e
-          brew install xcodegen
+          brew list xcodegen >/dev/null 2>&1 || brew install xcodegen
+          xcodegen --version
+
       - name: 生成 Xcode 工程
         script: |
           set -e
           xcodegen generate
           xcodebuild -list -project "$PROJECT"
+
       - name: 编译（关闭签名）
         script: |
           set -e
@@ -31,19 +34,24 @@ workflows:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            CODE_SIGN_ENTITLEMENTS=""
+            CODE_SIGN_ENTITLEMENTS="" \
+            build
+
       - name: 打包成 ipa
         script: |
           set -e
           APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -1)
           echo "app: $APP"
-          if [ -z "$APP" ]; then echo "未找到 .app"; exit 1; fi
+          if [ -z "$APP" ]; then echo "未找到 .app，编译失败"; exit 1; fi
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Info.plist")
+          echo "version: $VERSION"
+          rm -rf payload
           mkdir -p payload/Payload
           cp -R "$APP" payload/Payload/
           cd payload
-          zip -r -y ../qingshipin-unsigned.ipa Payload
+          zip -r -y "../qingshipin-ios-v${VERSION}.ipa" Payload
           cd ..
-          ls -lh qingshipin-unsigned.ipa
-          unzip -l qingshipin-unsigned.ipa | head -20
+          ls -lh ./*.ipa
+          unzip -l ./qingshipin-ios-v"${VERSION}".ipa | head -20
     artifacts:
-      - qingshipin-unsigned.ipa
+      - qingshipin-ios-*.ipa

@@ -1,36 +1,49 @@
 name: Qingshipin
 options:
   bundleIdPrefix: com.qingshipin
+  createIntermediateGroups: true
   deploymentTarget:
     iOS: "15.0"
-  xcodeVersion: "15.0"
-  createIntermediateGroups: true
 
 settings:
   base:
-    DEVELOPMENT_TEAM: ""
-    CODE_SIGN_STYLE: Automatic
     SWIFT_VERSION: "5.0"
     IPHONEOS_DEPLOYMENT_TARGET: "15.0"
     TARGETED_DEVICE_FAMILY: "1"
-    INFOPLIST_FILE: 轻视频iOS/Info.plist
-    PRODUCT_BUNDLE_IDENTIFIER: com.qingshipin.ios
-    PRODUCT_NAME: Qingshipin
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
+    CLANG_ENABLE_MODULES: YES
 
 targets:
   Qingshipin:
     type: application
     platform: iOS
     sources:
-      - path: 轻视频iOS
+      - path: Sources
+      - path: Resources/Assets.xcassets
     info:
-      path: 轻视频iOS/Info.plist
+      path: Resources/Info.plist
     settings:
       base:
-        GENERATE_INFOPLIST_FILE: NO
         PRODUCT_NAME: Qingshipin
-        MARKETING_VERSION: "1.0.0"
+        PRODUCT_BUNDLE_IDENTIFIER: com.qingshipin.ios
+        INFOPLIST_FILE: Resources/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        MARKETING_VERSION: "1.3.0"
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1"
-    scheme:
-      testTargets: []
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_IDENTITY: ""
+        DEVELOPMENT_TEAM: ""
+        SWIFT_EMIT_LOC_STRINGS: NO
+
+schemes:
+  Qingshipin:
+    build:
+      targets:
+        Qingshipin: all
+    run:
+      config: Release
+    archive:
+      config: Release
