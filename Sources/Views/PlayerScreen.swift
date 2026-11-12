@@ -32,7 +32,6 @@ struct PlayerScreen: View {
     @State private var seekBasePos: Double = 0
     @State private var seekBaseX: CGFloat = 0
     @State private var pressStartTime: Double = 0
-    @State private var topBarHideTask: Task<Void, Never>?
     /// 横板自动全屏：每集只自动触发一次
     @State private var autoRotatedVideoId: Int64 = -1
     @State private var userExitedFullscreen = false
@@ -343,43 +342,16 @@ struct PlayerScreen: View {
 
     // MARK: - 顶栏显示与自动隐藏
 
-    /// 单击：切换顶栏。呼出时 3 秒后自动隐藏，隐藏则立即收起
+    /// 单击：切换标题栏显隐。标题栏不再自动消失，完全由用户控制
     private func toggleTopBarWithAutoHide() {
-        // 全屏时标题栏常驻，不响应单击隐藏
-        if isFullscreen { return }
-        if showTopBar {
-            hideTopBar()
-        } else {
-            showTopBarWithAutoHide()
+        withAnimation(.easeInOut(duration: 0.2)) { showTopBar.toggle() }
+    }
+
+    /// 确保标题栏可见（切换集数、退出全屏等场景调用）
+    private func ensureTopBarVisible() {
+        if !showTopBar {
+            withAnimation(.easeOut(duration: 0.18)) { showTopBar = true }
         }
-    }
-
-    /// 呼出顶栏，并在 3 秒后自动淡出（安卓端为常驻，这里按需求自动隐藏）
-    private func showTopBarWithAutoHide(seconds: Double = 3) {
-        withAnimation(.easeOut(duration: 0.18)) { showTopBar = true }
-        scheduleTopBarHide(seconds: seconds)
-    }
-
-    private func scheduleTopBarHide(seconds: Double = 3) {
-        topBarHideTask?.cancel()
-        // 全屏状态下标题栏常驻，不参与自动隐藏
-        guard !isFullscreen else { topBarHideTask = nil; return }
-        topBarHideTask = Task {
-            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
-            guard !Task.isCancelled else { return }
-            hideTopBar()
-        }
-    }
-
-    private func hideTopBar() {
-        topBarHideTask?.cancel()
-        topBarHideTask = nil
-        withAnimation(.easeInOut(duration: 0.25)) { showTopBar = false }
-    }
-
-    /// 交互时保持顶栏可见并重新计时（如打开选集、投屏）
-    private func keepTopBarVisible() {
-        if showTopBar { scheduleTopBarHide() }
     }
 
     private func handleDragChanged(_ value: DragGesture.Value, size: CGSize) {
@@ -411,7 +383,7 @@ struct PlayerScreen: View {
             dragGestureHandled = true
         }
         if seeking {
-            if showTopBar { keepTopBarVisible() }
+            ensureTopBarVisible()
             let secondsPerPoint = 0.4
             let delta = Double(dx) * secondsPerPoint
             let target = max(0, min(engine.duration > 0 ? engine.duration : seekBasePos + delta, seekBasePos + delta))
@@ -466,16 +438,11 @@ struct PlayerScreen: View {
             Task { await resumeFromServer() }
         }
         startProgressReporter()
-
-        // 进入后顶部栏短暂展示，随后自动隐藏
-        scheduleTopBarHide()
     }
 
     private func teardown() {
         reportProgress()
         progressTask?.cancel()
-        topBarHideTask?.cancel()
-        topBarHideTask = nil
         castPollTask?.cancel()
         engine.detach()
         UIApplication.shared.isIdleTimerDisabled = false
@@ -623,7 +590,7 @@ struct PlayerScreen: View {
             userExitedFullscreen = true
             isFullscreen = false
             OrientationManager.shared.lockPortrait()
-            showTopBarWithAutoHide(seconds: 3)
+            withAnimation(.easeOut(duration: 0.18)) { showTopBar = true }
         } else {
             userExitedFullscreen = false
             enterFullscreen(auto: false)
@@ -649,9 +616,6 @@ struct PlayerScreen: View {
         if auto {
             toast("横板视频已自动全屏")
         }
-        // 全屏时标题栏常驻，不自动隐藏（用户需要一眼看到退出入口）
-        topBarHideTask?.cancel()
-        topBarHideTask = nil
         withAnimation(.easeOut(duration: 0.18)) { showTopBar = true }
     }
 
@@ -664,7 +628,7 @@ struct PlayerScreen: View {
             userExitedFullscreen = true
             isFullscreen = false
             OrientationManager.shared.lockPortrait()
-            showTopBarWithAutoHide(seconds: 3)
+            withAnimation(.easeOut(duration: 0.18)) { showTopBar = true }
         }
     }
 
