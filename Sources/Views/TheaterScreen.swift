@@ -108,12 +108,6 @@ enum TheaterItem: Identifiable, Equatable {
     }
 }
 
-extension Array {
-    subscript(safe index: Int) -> Element? {
-        guard index >= 0, index < count else { return nil }
-        return self[index]
-    }
-}
 
 /// 剧场：短剧库网格，点击封面直接续播
 struct TheaterScreen: View {
