@@ -78,7 +78,7 @@ struct LoginScreen: View {
 
     private var form: some View {
         VStack(spacing: 14) {
-            fieldBox(icon: "server.rack", title: "服务器地址") {
+            fieldBox(icon: "server.rack", title: "服务器地址（内网 192.168.0.138 / 外网 wym.peterw.top）") {
                 HStack(spacing: 8) {
                     TextField("http://192.168.0.138:8092", text: $server)
                         .keyboardType(.URL)
@@ -194,12 +194,15 @@ struct LoginScreen: View {
     private func autoDetect() async {
         detecting = true
         defer { detecting = false }
-        let best = await ApiClient.shared.detectBestBase()
-        if let best = best {
+        let result = await ApiClient.shared.detectBestBaseDetailed()
+        if let best = result.best {
             server = trimmedServer(best)
             toast("已连接 \(best)")
         } else {
-            toast("未探测到可用服务器，请手动填写")
+            // 两个地址都不通时，也把这个地址填好，便于用户直接改端口或换域名
+            server = trimmedServer(ApiClient.shared.baseURL)
+            let detail = result.failures.joined(separator: "；")
+            errorText = detail.isEmpty ? "未探测到可用服务器，请手动填写" : "自动探测失败：\(detail)"
         }
     }
 

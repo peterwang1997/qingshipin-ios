@@ -1,13 +1,14 @@
-import Foundation
+﻿import Foundation
 
 /// 网络与鉴权状态：对应安卓 ApiClient（服务器地址、JWT、候选地址探测）
 final class ApiClient {
     static let shared = ApiClient()
 
-    /// 内网优先、外网兜底（与安卓 SERVER_CANDIDATES 完全一致）
+    /// 内网优先、外网兜底
+    /// 注意：外网必须用 wym.peterw.top（根域 peterw.top 没有 A 记录，解析会直接失败）
     static let serverCandidates = [
         "http://192.168.0.138:8092/",
-        "http://peterw.top:8092/"
+        "http://wym.peterw.top:8092/"
     ]
     static let defaultBase = "http://192.168.0.138:8092/"
 
@@ -26,9 +27,12 @@ final class ApiClient {
         session = URLSession(configuration: cfg)
 
         let probe = URLSessionConfiguration.ephemeral
-        probe.timeoutIntervalForRequest = 2
-        probe.timeoutIntervalForResource = 3
+        // 请求级 timeoutInterval 只能小于该值才生效，这里放宽到 10 秒，
+        // 具体单次超时由 probe() 里的 req.timeoutInterval 控制（内网 3s / 外网 8s）
+        probe.timeoutIntervalForRequest = 10
+        probe.timeoutIntervalForResource = 12
         probe.waitsForConnectivity = false
+        probe.requestCachePolicy = .reloadIgnoringLocalCacheData
         probeSession = URLSession(configuration: probe)
     }
 
@@ -71,26 +75,51 @@ final class ApiClient {
 
     // MARK: - 服务器探测
 
-    /// 并行探测所有候选地址，按优先级返回第一个可用的（内网优先），避免启动黑屏
-    func detectBestBase() async -> String? {
+    /// 探测结果：成功地址 + 每个候选的失败原因（便于定位）
+    struct ProbeResult {
         var best: String?
-        for candidate in Self.serverCandidates {
-            if await probe(candidate) {
-                best = candidate
-                break
+        var failures: [String]
+    }
+
+    /// 并行探测所有候选地址，按优先级返回第一个可用的（内网优先）
+    /// 并行而非串行：外网在移动网络下握手较慢，串行会让启动等待翻倍
+    func detectBestBaseDetailed() async -> ProbeResult {
+        var failures: [String] = []
+
+        let results = await withTaskGroup(of: (Int, String, Bool).self) { group -> [(Int, String, Bool)] in
+            for (index, base) in Self.serverCandidates.enumerated() {
+                group.addTask { (index, base, await self.probe(base)) }
             }
+            var collected: [(Int, String, Bool)] = []
+            for await item in group { collected.append(item) }
+            return collected
         }
-        return best
+
+        let ordered = results.sorted { $0.0 < $1.0 }
+        for (_, base, ok) in ordered {
+            if ok { return ProbeResult(best: base, failures: failures) }
+            failures.append("\(base) 不可达")
+        }
+        return ProbeResult(best: nil, failures: failures)
+    }
+
+    func detectBestBase() async -> String? {
+        await detectBestBaseDetailed().best
     }
 
     private func probe(_ base: String) async -> Bool {
         guard let url = URL(string: base + "api/settings/public") else { return false }
         var req = URLRequest(url: url)
-        req.timeoutInterval = 2.5
-        req.setValue("QingShipin-iOS/1.3", forHTTPHeaderField: "User-Agent")
+        // 内网通常秒回；外网在 4G/5G 下握手可能超过 3 秒，给足 8 秒
+        req.timeoutInterval = base.contains("192.168.") ? 3.0 : 8.0
+        req.cachePolicy = .reloadIgnoringLocalCacheData
+        req.setValue("QingShipin-iOS/1.4", forHTTPHeaderField: "User-Agent")
         do {
             let (_, resp) = try await probeSession.data(for: req)
-            if let http = resp as? HTTPURLResponse { return (200...399).contains(http.statusCode) }
+            if let http = resp as? HTTPURLResponse {
+                // 200 与 401（需要登录）都说明服务端活着
+                return (200...399).contains(http.statusCode) || http.statusCode == 401
+            }
             return false
         } catch {
             return false
