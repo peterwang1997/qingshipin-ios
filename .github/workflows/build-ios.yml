@@ -1,12 +1,9 @@
-# 轻视频 iOS —— GitHub Actions 打包未签名 ipa
-# 用途：在没有 Mac、没有付费开发者账号的情况下，用 GitHub 的 macOS 虚拟机编译出 ipa，
-#       再在 Windows 上用 Sideloadly 配免费 Apple ID 自签安装（有效期 7 天，到期重签）。
+# 轻视频 iOS —— 编译未签名 ipa
+# 用途：没有 Mac、没有付费开发者账号时，用 GitHub 的 macOS 虚拟机编出 ipa，
+#       再在 Windows 上用 Sideloadly 等工具配免费 Apple ID 自签安装（7 天有效，到期重签）。
 #
-# 触发方式：推送到 main 分支，或在仓库 Actions 页面手动 Run workflow
-#
-# 说明：
-#   - 本流程不签名，因此任何工程签名配置都不会导致失败
-#   - 若以后有付费开发者账号，可改用带证书的签名版流程（另存一份即可，不要混在这个文件里）
+# 触发：推送到 main、手动 Run workflow、或创建 tag。
+# 工程用 XcodeGen 描述，构建时现场生成 .xcodeproj，仓库里不放工程文件。
 
 name: Build iOS IPA (unsigned)
 
@@ -14,27 +11,41 @@ on:
   workflow_dispatch:
   push:
     branches: [ main ]
+    tags: [ 'v*' ]
+
+concurrency:
+  group: ios-build-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   build:
-    runs-on: macos-13   # Intel 版 macOS 打包机（账号不支持 arm64 时使用）
+    runs-on: macos-14
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Show toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
       - name: Install XcodeGen
-        run: brew install xcodegen
+        run: |
+          if ! command -v xcodegen >/dev/null 2>&1; then
+            brew install xcodegen
+          fi
+          xcodegen --version
 
       - name: Generate Xcode project
-        run: xcodegen generate
-
-      - name: Show scheme
         run: |
-          xcodebuild -project Qingshipin.xcodeproj -list
+          xcodegen generate
+          xcodebuild -list -project Qingshipin.xcodeproj
 
-      - name: Build unsigned
+      - name: Build (unsigned)
         run: |
+          set -o pipefail
           xcodebuild \
             -project Qingshipin.xcodeproj \
             -scheme Qingshipin \
@@ -46,22 +57,36 @@ jobs:
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGN_ENTITLEMENTS="" \
-            build
+            build 2>&1 | tee build.log
 
       - name: Package into ipa
         run: |
+          set -e
           APP=$(find build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -1)
-          echo "app path: $APP"
+          echo "app: $APP"
           if [ -z "$APP" ]; then echo "未找到 .app，编译失败"; exit 1; fi
+          VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" "$APP/Info.plist")
+          echo "version: $VERSION"
           rm -rf payload
           mkdir -p payload/Payload
           cp -R "$APP" payload/Payload/
           cd payload
-          zip -r ../Qingshipin-unsigned.ipa Payload
+          zip -r -y "../qingshipin-ios-v${VERSION}.ipa" Payload
+          cd ..
+          ls -lh ./*.ipa
 
-      - name: Upload ipa artifact
+      - name: Upload ipa
         uses: actions/upload-artifact@v4
         with:
-          name: Qingshipin-unsigned
-          path: Qingshipin-unsigned.ipa
+          name: Qingshipin-ios-ipa
+          path: qingshipin-ios-*.ipa
           if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-log
+          path: build.log
+          if-no-files-found: ignore
