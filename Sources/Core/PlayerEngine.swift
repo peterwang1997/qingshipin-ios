@@ -14,6 +14,8 @@ final class PlayerEngine: ObservableObject {
     @Published private(set) var duration: Double = 0
     @Published private(set) var didEnd = false
     @Published var failed: Bool = false
+    /// 视频画面尺寸（自然尺寸），用于判断横板/竖板
+    @Published private(set) var videoSize: CGSize = .zero
 
     private var timeObserver: Any?
     private var timeControlObservation: NSKeyValueObservation?
@@ -82,6 +84,7 @@ final class PlayerEngine: ObservableObject {
                 case .readyToPlay:
                     if dur.isFinite && dur > 0 { self.duration = dur }
                     self.isBuffering = false
+                    self.readVideoSize(from: observed)
                     if self.player.timeControlStatus != .playing { self.play() }
                 case .failed:
                     self.isBuffering = false
@@ -103,6 +106,27 @@ final class PlayerEngine: ObservableObject {
 
         player.replaceCurrentItem(with: item)
         if autoplay { play() }
+    }
+
+    /// 读取视频自然尺寸（优先 presentationSize，回落到 track 的 naturalSize）
+    private func readVideoSize(from item: AVPlayerItem) {
+        let presentation = item.presentationSize
+        if presentation.width > 0, presentation.height > 0 {
+            videoSize = presentation
+            return
+        }
+        if let track = item.asset.tracks(withMediaType: .video).first {
+            let size = track.naturalSize.applying(track.preferredTransform)
+            let width = abs(size.width), height = abs(size.height)
+            if width > 0, height > 0 {
+                videoSize = CGSize(width: width, height: height)
+            }
+        }
+    }
+
+    /// 是否横板视频（宽 > 高）
+    var isLandscapeVideo: Bool {
+        videoSize.width > 0 && videoSize.height > 0 && videoSize.width > videoSize.height
     }
 
     func play() {

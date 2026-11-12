@@ -33,6 +33,9 @@ struct PlayerScreen: View {
     @State private var seekBaseX: CGFloat = 0
     @State private var pressStartTime: Double = 0
     @State private var topBarHideTask: Task<Void, Never>?
+    /// 横板自动全屏：每集只自动触发一次
+    @State private var autoRotatedVideoId: Int64 = -1
+    @State private var userExitedFullscreen = false
 
     // 手势状态
     @State private var dragGestureHandled = false
@@ -196,6 +199,9 @@ struct PlayerScreen: View {
         .onChange(of: engine.duration) { _ in
             // 播放器就绪后立刻应用续播位置
             applyResumeSeek()
+        }
+        .onChange(of: engine.videoSize) { _ in
+            autoFullscreenForLandscapeVideo()
         }
         .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
             handleOrientationChange()
@@ -507,6 +513,9 @@ struct PlayerScreen: View {
     private func startPlayback(videoId id: Int64, newTitle: String, autoplay: Bool) {
         videoId = id
         title = newTitle
+        // 换集后重新判断横竖板，允许自动全屏再次生效
+        userExitedFullscreen = false
+        autoRotatedVideoId = -1
         engine.load(url: ApiClient.shared.streamURL(videoId: id), autoplay: autoplay)
         Prefs.setLastEpisode(seriesId: seriesId, videoId: id)
 
@@ -627,15 +636,38 @@ struct PlayerScreen: View {
     // MARK: - 全屏
 
     private func toggleFullscreen() {
-        isFullscreen.toggle()
         if isFullscreen {
-            OrientationManager.shared.allowAllButUpsideDown()
-            // 进入全屏时把顶栏呼出并留足停留时间，避免隐藏后找不到退出入口
-            showTopBarWithAutoHide(seconds: 4)
-        } else {
+            userExitedFullscreen = true
+            isFullscreen = false
             OrientationManager.shared.lockPortrait()
             showTopBarWithAutoHide(seconds: 3)
+        } else {
+            userExitedFullscreen = false
+            enterFullscreen(auto: false)
         }
+    }
+
+    /// 横板视频自动进入全屏横屏播放（每集只自动触发一次）
+    private func autoFullscreenForLandscapeVideo() {
+        guard engine.videoSize.width > 0, engine.videoSize.height > 0 else { return }
+        guard engine.isLandscapeVideo else { return }
+        // 用户手动退出过全屏就不再强行拉回
+        guard !userExitedFullscreen else { return }
+        guard !isFullscreen else { return }
+        guard autoRotatedVideoId != videoId else { return }
+
+        autoRotatedVideoId = videoId
+        enterFullscreen(auto: true)
+    }
+
+    private func enterFullscreen(auto: Bool) {
+        isFullscreen = true
+        OrientationManager.shared.allowAllButUpsideDown()
+        // 自动进入时给出简短提示，避免用户困惑
+        if auto {
+            toast("横板视频已自动全屏")
+        }
+        showTopBarWithAutoHide(seconds: 4)
         topBarHideTask?.cancel()
     }
 
@@ -645,6 +677,7 @@ struct PlayerScreen: View {
         let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
         guard let geo = scene?.interfaceOrientation else { return }
         if geo.isPortrait {
+            userExitedFullscreen = true
             isFullscreen = false
             OrientationManager.shared.lockPortrait()
             showTopBarWithAutoHide(seconds: 3)
