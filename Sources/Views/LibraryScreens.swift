@@ -1,4 +1,4 @@
-import SwiftUI
+﻿import SwiftUI
 
 /// 通用视频卡片列表项（收藏/历史复用，对应 item_video.xml）
 struct VideoRowCard: View {
@@ -16,7 +16,7 @@ struct VideoRowCard: View {
                         .clipShape(RoundedRectangle(cornerRadius: Theme.cornerCard, style: .continuous))
 
                     if let d = item.duration, d > 0 {
-                        Text(String.clockText(d))
+                        Text(Theme.clock(d))
                             .font(.system(size: 10, weight: .medium))
                             .foregroundColor(.white)
                             .padding(.horizontal, 6)

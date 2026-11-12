@@ -304,7 +304,7 @@ struct HomeScreen: View {
 
     private var timeText: String {
         guard engine.duration > 0 else { return "--:--" }
-        return "\(String.clockText(engine.currentTime)) / \(String.clockText(engine.duration))"
+        return "\(Theme.clock(engine.currentTime)) / \(Theme.clock(engine.duration))"
     }
 
     private var computedProgress: CGFloat {

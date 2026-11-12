@@ -102,7 +102,7 @@ struct PlayerScreen: View {
                 // 拖动进度提示
                 if seeking {
                     VStack(spacing: 6) {
-                        Text("\(String.clockText(seekPreview)) / \(String.clockText(engine.duration))")
+                        Text("\(Theme.clock(seekPreview)) / \(Theme.clock(engine.duration))")
                             .font(.system(size: 20, weight: .semibold))
                             .foregroundColor(.white)
                         GeometryReader { g in

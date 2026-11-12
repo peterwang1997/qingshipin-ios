@@ -1,4 +1,4 @@
-import SwiftUI
+﻿import SwiftUI
 
 /// 与安卓端 colors.xml 一一对应的配色
 enum Theme {
@@ -49,14 +49,10 @@ enum Screen {
     }
 }
 
-extension String {
+extension Theme {
     /// 秒 → mm:ss
-    func clockText(seconds: Double) -> String { String.clockText(seconds) }
-}
-
-extension String {
-    static func clockText(_ seconds: Double) -> String {
-        let total = max(0, Int(seconds.rounded()))
+    static func clock(_ seconds: Double) -> String {
+        let total = Swift.max(0, Int(seconds.rounded()))
         return String(format: "%02d:%02d", total / 60, total % 60)
     }
 }

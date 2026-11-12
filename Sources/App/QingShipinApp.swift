@@ -50,12 +50,19 @@ final class OrientationManager {
         requestUpdate()
     }
 
+    /// iOS 15 只能靠 setValue 触发方向刷新，iOS 16+ 用官方几何更新 API
     private func requestUpdate() {
-        guard let scene = UIApplication.shared.connectedScenes
-            .compactMap({ $0 as? UIWindowScene }).first else { return }
-        let proxy = scene.keyWindow?.rootViewController
-        proxy?.setNeedsUpdateOfSupportedInterfaceOrientations()
-        scene.requestGeometryUpdate(.iOS(interfaceOrientations: mask)) { _ in }
+        if #available(iOS 16.0, *) {
+            guard let scene = UIApplication.shared.connectedScenes
+                .compactMap({ $0 as? UIWindowScene }).first else { return }
+            scene.keyWindow?.rootViewController?.setNeedsUpdateOfSupportedInterfaceOrientations()
+            scene.requestGeometryUpdate(.iOS(interfaceOrientations: mask)) { _ in }
+            return
+        }
+        UIDevice.current.setValue(mask == .portrait ? UIInterfaceOrientation.portrait.rawValue
+                                                   : UIInterfaceOrientation.landscapeRight.rawValue,
+                                  forKey: "orientation")
+        UIViewController.attemptRotationToDeviceOrientation()
     }
 }
 
