@@ -198,9 +198,14 @@ struct TheaterScreen: View {
                 Text(items.isEmpty ? "短剧库" : "\(items.count) 部作品")
                     .font(.system(size: 12))
                     .foregroundColor(Theme.textSecondary)
-                    .onLongPressGesture {
-                        if !diagnoseText.isEmpty { toast(diagnoseText) }
-                    }
+
+                // 诊断行：常驻显示聚合统计，便于排查多季合并是否生效
+                if !diagnoseText.isEmpty {
+                    Text(diagnoseText)
+                        .font(.system(size: 11, weight: .medium))
+                        .foregroundColor(Theme.accent)
+                        .lineLimit(2)
+                }
             }
             Spacer()
             Button {

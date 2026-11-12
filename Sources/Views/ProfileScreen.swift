@@ -12,6 +12,13 @@ struct ProfileScreen: View {
 
     private var user: User? { appState.user }
 
+    /// 当前安装包版本号（用于确认装的是哪一版）
+    private var appVersion: String {
+        let v = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?"
+        let b = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?"
+        return "v\(v)(\(b))"
+    }
+
     var body: some View {
         ZStack {
             Theme.background.ignoresSafeArea()
@@ -94,8 +101,8 @@ struct ProfileScreen: View {
             }
             divider
             menuRow(icon: "info.circle", title: "关于项目", tint: Theme.textSecondary,
-                    detail: "v1.3.0") {
-                toast("月半追剧 iOS v1.3.0 · 后端 1.1.5")
+                    detail: appVersion) {
+                toast("月半追剧 v\(appVersion) · 后端 1.1.5")
             }
             divider
         }
