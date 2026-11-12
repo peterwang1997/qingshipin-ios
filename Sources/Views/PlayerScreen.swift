@@ -41,6 +41,7 @@ struct PlayerScreen: View {
     @State private var accelerating = false
     @State private var lastTapTime: Double = 0
     @State private var pendingSingleTap: DispatchWorkItem?
+    @State private var topBarHideTask: Task<Void, Never>?
 
     // 投屏
     @State private var castingDevices: [DlnaDevice] = []
@@ -314,25 +315,7 @@ struct PlayerScreen: View {
                         handleDragEnded(value, size: size)
                     }
             )
-            .onTapGesture(count: 2) {
-                cancelPendingTap()
-                lastTapTime = 0
-                engine.togglePlayPause()
-            }
-            .onTapGesture(count: 1) {
-                let now = Date().timeIntervalSince1970
-                if now - lastTapTime < doubleTapWindow {
-                    // 双击已由 count:2 处理
-                    return
-                }
-                lastTapTime = now
-                cancelPendingTap()
-                let work = DispatchWorkItem {
-                    toggleTopBarWithAutoHide()
-                }
-                pendingSingleTap = work
-                DispatchQueue.main.asyncAfter(deadline: .now() + doubleTapWindow, execute: work)
-            }
+
     }
 
     private func cancelPendingTap() {
@@ -340,18 +323,66 @@ struct PlayerScreen: View {
         pendingSingleTap = nil
     }
 
-    // MARK: - 顶栏显示与自动隐藏
+    /// 单击 → 显示/隐藏标题栏（显示后 3 秒自动隐藏）
+    /// 双击 → 播放/暂停
+    private func handleTap() {
+        // 拖动进度、长按加速时不响应点击
+        guard !accelerating, !seeking else { return }
 
-    /// 单击：切换标题栏显隐。标题栏不再自动消失，完全由用户控制
-    private func toggleTopBarWithAutoHide() {
-        withAnimation(.easeInOut(duration: 0.2)) { showTopBar.toggle() }
+        let now = Date().timeIntervalSince1970
+        // lastTapTime 为 0 表示还没有过上一次点击，不能当作「刚点过」处理
+        if lastTapTime > 0, now - lastTapTime < doubleTapWindow {
+            // 判定为双击：撤销挂起的单击，执行暂停/播放
+            lastTapTime = 0
+            cancelPendingTap()
+            engine.togglePlayPause()
+            let generator = UIImpactFeedbackGenerator(style: .light)
+            generator.impactOccurred()
+            return
+        }
+
+        lastTapTime = now
+        cancelPendingTap()
+        let work = DispatchWorkItem { toggleTopBarWithAutoHide() }
+        pendingSingleTap = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + doubleTapWindow, execute: work)
     }
 
-    /// 确保标题栏可见（切换集数、退出全屏等场景调用）
-    private func ensureTopBarVisible() {
-        if !showTopBar {
-            withAnimation(.easeOut(duration: 0.18)) { showTopBar = true }
+    // MARK: - 顶栏显示与自动隐藏
+
+    /// 单击：切换标题栏显隐；呼出后 3 秒自动隐藏（全屏与竖屏规则一致）
+    private func toggleTopBarWithAutoHide() {
+        if showTopBar {
+            hideTopBar()
+        } else {
+            showTopBarTemporarily()
         }
+    }
+
+    /// 显示标题栏并启动 3 秒自动隐藏
+    private func showTopBarTemporarily() {
+        withAnimation(.easeOut(duration: 0.18)) { showTopBar = true }
+        scheduleTopBarHide()
+    }
+
+    private func scheduleTopBarHide() {
+        topBarHideTask?.cancel()
+        topBarHideTask = Task {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard !Task.isCancelled else { return }
+            hideTopBar()
+        }
+    }
+
+    private func hideTopBar() {
+        topBarHideTask?.cancel()
+        topBarHideTask = nil
+        withAnimation(.easeInOut(duration: 0.25)) { showTopBar = false }
+    }
+
+    /// 交互时保持标题栏可见并重置 3 秒计时
+    private func ensureTopBarVisible() {
+        showTopBarTemporarily()
     }
 
     private func handleDragChanged(_ value: DragGesture.Value, size: CGSize) {
@@ -381,9 +412,9 @@ struct PlayerScreen: View {
             seekBaseX = value.startLocation.x
             seekPreview = engine.currentTime
             dragGestureHandled = true
+            ensureTopBarVisible()
         }
         if seeking {
-            ensureTopBarVisible()
             let secondsPerPoint = 0.4
             let delta = Double(dx) * secondsPerPoint
             let target = max(0, min(engine.duration > 0 ? engine.duration : seekBasePos + delta, seekBasePos + delta))
@@ -398,6 +429,10 @@ struct PlayerScreen: View {
     }
 
     private func handleDragEnded(_ value: DragGesture.Value, size: CGSize) {
+        let wasHandled = dragGestureHandled
+        let wasSeeking = seeking
+        let wasAccelerating = accelerating
+
         if seeking {
             engine.seek(to: seekPreview)
             seeking = false
@@ -408,6 +443,12 @@ struct PlayerScreen: View {
         }
         pressStartTime = 0
         dragGestureHandled = false
+
+        // 位移极小且未触发换集/进度/加速 → 视为点击（DragGesture 会吞掉 TapGesture）
+        let moved = abs(value.translation.width) + abs(value.translation.height)
+        if !wasHandled, !wasSeeking, !wasAccelerating, moved < 12 {
+            handleTap()
+        }
     }
 
     // MARK: - 启动与拆解
@@ -438,12 +479,18 @@ struct PlayerScreen: View {
             Task { await resumeFromServer() }
         }
         startProgressReporter()
+
+        // 进入后标题栏短暂展示，3 秒后自动隐藏
+        scheduleTopBarHide()
     }
 
     private func teardown() {
         reportProgress()
         progressTask?.cancel()
         castPollTask?.cancel()
+        topBarHideTask?.cancel()
+        topBarHideTask = nil
+        cancelPendingTap()
         engine.detach()
         UIApplication.shared.isIdleTimerDisabled = false
         OrientationManager.shared.lockPortrait()
@@ -590,7 +637,7 @@ struct PlayerScreen: View {
             userExitedFullscreen = true
             isFullscreen = false
             OrientationManager.shared.lockPortrait()
-            withAnimation(.easeOut(duration: 0.18)) { showTopBar = true }
+            showTopBarTemporarily()
         } else {
             userExitedFullscreen = false
             enterFullscreen(auto: false)
@@ -616,7 +663,7 @@ struct PlayerScreen: View {
         if auto {
             toast("横板视频已自动全屏")
         }
-        withAnimation(.easeOut(duration: 0.18)) { showTopBar = true }
+        showTopBarTemporarily()
     }
 
     /// 横屏时用户把手机转回竖屏 → 自动退出全屏（多一条退出路径）
@@ -628,7 +675,7 @@ struct PlayerScreen: View {
             userExitedFullscreen = true
             isFullscreen = false
             OrientationManager.shared.lockPortrait()
-            withAnimation(.easeOut(duration: 0.18)) { showTopBar = true }
+            showTopBarTemporarily()
         }
     }
 
