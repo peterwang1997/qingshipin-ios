@@ -1,4 +1,4 @@
-# 轻视频 iOS —— 编译未签名 ipa
+﻿# 轻视频 iOS —— 编译未签名 ipa
 # 用途：没有 Mac、没有付费开发者账号时，用 GitHub 的 macOS 虚拟机编出 ipa，
 #       再在 Windows 上用 Sideloadly 等工具配免费 Apple ID 自签安装（7 天有效，到期重签）。
 #
@@ -14,8 +14,8 @@ on:
     tags: [ 'v*' ]
 
 concurrency:
-  group: ios-build-${{ github.ref }}
-  cancel-in-progress: true
+  group: ios-build-${{ github.run_id }}
+  cancel-in-progress: false
 
 jobs:
   build:
