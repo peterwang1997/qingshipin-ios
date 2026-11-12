@@ -1,4 +1,4 @@
-name: Qingshipin
+﻿name: Qingshipin
 options:
   bundleIdPrefix: com.qingshipin
   createIntermediateGroups: true
@@ -20,13 +20,11 @@ targets:
     sources:
       - path: Sources
       - path: Resources/Assets.xcassets
-    info:
-      path: Resources/Info.plist
     settings:
       base:
         PRODUCT_NAME: Qingshipin
         PRODUCT_BUNDLE_IDENTIFIER: com.qingshipin.ios
-        INFOPLIST_FILE: Resources/Info.plist
+        INFOPLIST_FILE: Info.plist
         GENERATE_INFOPLIST_FILE: NO
         MARKETING_VERSION: "1.3.0"
         CURRENT_PROJECT_VERSION: "1"
