@@ -1,0 +1,12 @@
+name: macprobe
+on:
+  workflow_dispatch:
+jobs:
+  chorus:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-13, macos-15, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - run: uname -a
