@@ -139,6 +139,7 @@ struct TheaterScreen: View {
     @State private var error: String?
     @State private var seasonPicker: SeasonPickerTarget?
     @State private var openingId: Int64?
+    @State private var diagnoseText: String = ""
 
     private let columns = [GridItem(.flexible(), spacing: 10), GridItem(.flexible(), spacing: 10)]
 
@@ -197,6 +198,9 @@ struct TheaterScreen: View {
                 Text(items.isEmpty ? "短剧库" : "\(items.count) 部作品")
                     .font(.system(size: 12))
                     .foregroundColor(Theme.textSecondary)
+                    .onLongPressGesture {
+                        if !diagnoseText.isEmpty { toast(diagnoseText) }
+                    }
             }
             Spacer()
             Button {
@@ -358,7 +362,11 @@ struct TheaterScreen: View {
                 if chunk.count < pageSize || fresh.isEmpty { break }
                 page += 1
             }
-            items = TheaterItem.group(all)
+            let grouped = TheaterItem.group(all)
+            items = grouped
+            // 诊断：记录原始条数 / 聚合后条目数 / 多季组数，供长按标题查看
+            let multiCount = grouped.filter { $0.isMulti }.count
+            diagnoseText = "原始 \(all.count) 条 → 聚合 \(grouped.count) 项 · 多季 \(multiCount) 组"
             if items.isEmpty {
                 self.error = "暂无剧集"
             }

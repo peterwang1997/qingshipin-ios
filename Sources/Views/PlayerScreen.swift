@@ -60,7 +60,7 @@ struct PlayerScreen: View {
     var body: some View {
         GeometryReader { geo in
             ZStack {
-                Color.black.ignoresSafeArea()
+                Color.black
 
                 // 视频层
                 PlayerLayerView(player: engine.player, gravity: .resizeAspect)
@@ -125,13 +125,12 @@ struct PlayerScreen: View {
                     .background(RoundedRectangle(cornerRadius: 14).fill(Color.black.opacity(0.72)))
                 }
 
-                // 顶部栏：贴物理屏幕顶端，自行留出状态栏高度
+                // 顶部栏：紧贴屏幕顶端，内部只预留状态栏（灵动岛）高度
                 if showTopBar {
                     VStack(spacing: 0) {
                         topBar
                         Spacer(minLength: 0)
                     }
-                    .ignoresSafeArea(edges: .top)
                     .transition(.opacity)
                 }
 
@@ -160,22 +159,12 @@ struct PlayerScreen: View {
                     .opacity(showTopBar ? 1 : 0.35)
                 }
 
-                // 全屏退出按钮：置于最上层，与顶栏的显示状态完全解耦，永不被遮挡
-                if isFullscreen {
-                    VStack {
-                        HStack {
-                            Spacer()
-                            fullscreenExitButton
-                        }
-                        Spacer()
-                    }
-                    .padding(.top, UIApplication.shared.keyWindowTopInset() + 8)
-                    .padding(.trailing, 14)
-                    .ignoresSafeArea(edges: .top)
-                    .zIndex(10)
-                }
+
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .ignoresSafeArea()
         }
+        .ignoresSafeArea()
         .statusBarHidden(isFullscreen)
         .preferredColorScheme(.dark)
         .sheet(isPresented: $showEpisodes) { episodesSheet }
@@ -213,26 +202,6 @@ struct PlayerScreen: View {
         )
     }
 
-    /// 全屏退出按钮（常驻，不受顶栏自动隐藏影响）
-    private var fullscreenExitButton: some View {
-        Button {
-            toggleFullscreen()
-        } label: {
-            HStack(spacing: 5) {
-                Image(systemName: "arrow.down.right.and.arrow.up.left")
-                    .font(.system(size: 12, weight: .bold))
-                Text("退出全屏")
-                    .font(.system(size: 12, weight: .semibold))
-            }
-            .foregroundColor(.white)
-            .padding(.horizontal, 12)
-            .padding(.vertical, 8)
-            .background(Capsule().fill(Color.black.opacity(0.66)))
-            .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 0.6))
-            .contentShape(Capsule())
-        }
-        .buttonStyle(.plain)
-    }
 
     private var topBarContent: some View {
         HStack(spacing: 0) {
@@ -376,6 +345,8 @@ struct PlayerScreen: View {
 
     /// 单击：切换顶栏。呼出时 3 秒后自动隐藏，隐藏则立即收起
     private func toggleTopBarWithAutoHide() {
+        // 全屏时标题栏常驻，不响应单击隐藏
+        if isFullscreen { return }
         if showTopBar {
             hideTopBar()
         } else {
@@ -391,6 +362,8 @@ struct PlayerScreen: View {
 
     private func scheduleTopBarHide(seconds: Double = 3) {
         topBarHideTask?.cancel()
+        // 全屏状态下标题栏常驻，不参与自动隐藏
+        guard !isFullscreen else { topBarHideTask = nil; return }
         topBarHideTask = Task {
             try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             guard !Task.isCancelled else { return }
@@ -673,11 +646,13 @@ struct PlayerScreen: View {
     private func enterFullscreen(auto: Bool) {
         isFullscreen = true
         OrientationManager.shared.allowAllButUpsideDown()
-        // 自动进入时给出简短提示，避免用户困惑
         if auto {
             toast("横板视频已自动全屏")
         }
-        showTopBarWithAutoHide(seconds: 4)
+        // 全屏时标题栏常驻，不自动隐藏（用户需要一眼看到退出入口）
+        topBarHideTask?.cancel()
+        topBarHideTask = nil
+        withAnimation(.easeOut(duration: 0.18)) { showTopBar = true }
     }
 
     /// 横屏时用户把手机转回竖屏 → 自动退出全屏（多一条退出路径）
