@@ -372,7 +372,11 @@ struct TheaterScreen: View {
             // 诊断：记录原始条数 / 聚合后条目数 / 多季组数，供长按标题查看
             let multiCount = grouped.filter { $0.isMulti }.count
             let parsedCount = all.filter { SeasonParser.parse($0.title).season > 0 }.count
-            diagnoseText = "原始 \(all.count) 条 → 解析出季号 \(parsedCount) 条 · 聚合 \(grouped.count) 项 · 多季 \(multiCount) 组"
+            // 取一条含「季」的标题做实证：让诊断自证解析器在真机上的行为
+            let sample = all.first { ($0.title ?? "").contains("季") }
+            let sampleTitle = sample?.title ?? "(无含季标题)"
+            let sampleSeason = sample.map { SeasonParser.parse($0.title).season } ?? -1
+            diagnoseText = "原始 \(all.count) · 解析出季号 \(parsedCount) · 聚合 \(grouped.count) 项 · 多季 \(multiCount) 组 ｜ 样例「\(sampleTitle)」→ 季\(sampleSeason)"
             if items.isEmpty {
                 self.error = "暂无剧集"
             }
