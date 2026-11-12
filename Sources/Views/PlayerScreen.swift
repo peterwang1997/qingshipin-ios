@@ -32,6 +32,7 @@ struct PlayerScreen: View {
     @State private var seekBasePos: Double = 0
     @State private var seekBaseX: CGFloat = 0
     @State private var pressStartTime: Double = 0
+    @State private var topBarHideTask: Task<Void, Never>?
 
     // 手势状态
     @State private var dragGestureHandled = false
@@ -121,12 +122,13 @@ struct PlayerScreen: View {
                     .background(RoundedRectangle(cornerRadius: 14).fill(Color.black.opacity(0.72)))
                 }
 
-                // 顶部栏
+                // 顶部栏：贴物理屏幕顶端，自行留出状态栏高度
                 if showTopBar {
-                    VStack {
+                    VStack(spacing: 0) {
                         topBar
-                        Spacer()
+                        Spacer(minLength: 0)
                     }
+                    .ignoresSafeArea(edges: .top)
                     .transition(.opacity)
                 }
 
@@ -174,6 +176,18 @@ struct PlayerScreen: View {
     // MARK: - 顶部栏
 
     private var topBar: some View {
+        VStack(spacing: 0) {
+            Color.clear.frame(height: UIApplication.shared.keyWindowTopInset())
+            topBarContent
+        }
+        .background(
+            LinearGradient(colors: [Color.black.opacity(0.72), Color.black.opacity(0.42), .clear],
+                           startPoint: .top, endPoint: .bottom)
+                .ignoresSafeArea(edges: .top)
+        )
+    }
+
+    private var topBarContent: some View {
         HStack(spacing: 0) {
             Button {
                 close()
@@ -226,8 +240,6 @@ struct PlayerScreen: View {
         }
         .padding(.horizontal, 2)
         .frame(height: 52)
-        .background(Color.black.opacity(0.6))
-        .padding(.top, UIApplication.shared.keyWindowTopInset())
     }
 
     // MARK: - 底部进度
@@ -301,9 +313,7 @@ struct PlayerScreen: View {
                 lastTapTime = now
                 cancelPendingTap()
                 let work = DispatchWorkItem {
-                    withAnimation(.easeInOut(duration: 0.18)) {
-                        showTopBar.toggle()
-                    }
+                    toggleTopBarWithAutoHide()
                 }
                 pendingSingleTap = work
                 DispatchQueue.main.asyncAfter(deadline: .now() + doubleTapWindow, execute: work)
@@ -313,6 +323,43 @@ struct PlayerScreen: View {
     private func cancelPendingTap() {
         pendingSingleTap?.cancel()
         pendingSingleTap = nil
+    }
+
+    // MARK: - 顶栏显示与自动隐藏
+
+    /// 单击：切换顶栏。呼出时 3 秒后自动隐藏，隐藏则立即收起
+    private func toggleTopBarWithAutoHide() {
+        if showTopBar {
+            hideTopBar()
+        } else {
+            showTopBarWithAutoHide()
+        }
+    }
+
+    /// 呼出顶栏，并在 3 秒后自动淡出（安卓端为常驻，这里按需求自动隐藏）
+    private func showTopBarWithAutoHide() {
+        withAnimation(.easeOut(duration: 0.18)) { showTopBar = true }
+        scheduleTopBarHide()
+    }
+
+    private func scheduleTopBarHide() {
+        topBarHideTask?.cancel()
+        topBarHideTask = Task {
+            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            guard !Task.isCancelled else { return }
+            hideTopBar()
+        }
+    }
+
+    private func hideTopBar() {
+        topBarHideTask?.cancel()
+        topBarHideTask = nil
+        withAnimation(.easeInOut(duration: 0.25)) { showTopBar = false }
+    }
+
+    /// 交互时保持顶栏可见并重新计时（如打开选集、投屏）
+    private func keepTopBarVisible() {
+        if showTopBar { scheduleTopBarHide() }
     }
 
     private func handleDragChanged(_ value: DragGesture.Value, size: CGSize) {
@@ -344,6 +391,7 @@ struct PlayerScreen: View {
             dragGestureHandled = true
         }
         if seeking {
+            if showTopBar { keepTopBarVisible() }
             let secondsPerPoint = 0.4
             let delta = Double(dx) * secondsPerPoint
             let target = max(0, min(engine.duration > 0 ? engine.duration : seekBasePos + delta, seekBasePos + delta))
@@ -398,11 +446,16 @@ struct PlayerScreen: View {
             Task { await resumeFromServer() }
         }
         startProgressReporter()
+
+        // 进入后顶部栏短暂展示，随后自动隐藏
+        scheduleTopBarHide()
     }
 
     private func teardown() {
         reportProgress()
         progressTask?.cancel()
+        topBarHideTask?.cancel()
+        topBarHideTask = nil
         castPollTask?.cancel()
         engine.detach()
         UIApplication.shared.isIdleTimerDisabled = false

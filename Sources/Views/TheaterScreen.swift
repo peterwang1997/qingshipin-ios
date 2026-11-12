@@ -47,23 +47,71 @@ enum TheaterItem: Identifiable, Equatable {
     }
 
     /// 按根剧名分组：单季 → single，多季 → multi（季号升序）
+    /// 归一化后再比较，避免全角/半角括号、空格、标点差异导致同一部剧被拆成多个条目
     static func group(_ list: [Series]) -> [TheaterItem] {
-        var groups: [(root: String, items: [(series: Series, season: Int)])] = []
+        var order: [String] = []
+        var buckets: [String: (root: String, items: [(series: Series, season: Int)])] = [:]
+
         for s in list {
             let parsed = SeasonParser.parse(s.title)
-            if let idx = groups.firstIndex(where: { $0.root == parsed.root }) {
-                groups[idx].items.append((s, parsed.season))
-            } else {
-                groups.append((parsed.root, [(s, parsed.season)]))
+            let key = normalizeKey(parsed.root)
+            if buckets[key] == nil {
+                buckets[key] = (parsed.root, [])
+                order.append(key)
             }
+            buckets[key]?.items.append((s, parsed.season))
         }
-        return groups.map { group in
-            let sorted = group.items.sorted { $0.season < $1.season }.map { $0.series }
+
+        return order.compactMap { key -> TheaterItem? in
+            guard let bucket = buckets[key], !bucket.items.isEmpty else { return nil }
+            // 季号 0 视为唯一一季，排在最后
+            let sorted = bucket.items
+                .enumerated()
+                .sorted { a, b in
+                    let sa = a.element.season == 0 ? Int.max : a.element.season
+                    let sb = b.element.season == 0 ? Int.max : b.element.season
+                    if sa != sb { return sa < sb }
+                    return a.offset < b.offset
+                }
+                .map { $0.element.series }
+
             if sorted.count <= 1 {
                 return .single(sorted[0])
             }
-            return .multi(rootTitle: group.root, seasons: sorted)
+            // 多季里若存在真实季号，标题用解析出的根名；否则用第一条标题
+            let hasRealSeason = bucket.items.contains { $0.season > 0 }
+            let title = hasRealSeason ? bucket.root : (sorted.first?.displayTitle ?? bucket.root)
+            return .multi(rootTitle: title, seasons: sorted)
         }
+    }
+
+    /// 分组键归一化：去空白、统一括号与标点、全角转半角、忽略大小写
+    static func normalizeKey(_ s: String) -> String {
+        var out = ""
+        for ch in s {
+            switch ch {
+            case "（", "(", "【", "[", "〔":
+                out.append("(")
+            case "）", ")", "】", "]", "〕":
+                out.append(")")
+            case "：":
+                out.append(":")
+            case "，":
+                out.append(",")
+            case "、", "·", "•", "・", "-", "—", "_", ".", "。", " ":
+                continue
+            default:
+                out.append(ch)
+            }
+        }
+        return out.lowercased().trimmingCharacters(in: .whitespaces)
+    }
+}
+
+extension Array {
+    subscript(safe index: Int) -> Element? {
+        guard index >= 0, index < count else { return nil }
+        return self[index]
     }
 }
 
@@ -283,8 +331,22 @@ struct TheaterScreen: View {
         loading = true
         error = nil
         do {
-            let list = try await ApiService.shared.series(page: 1, limit: 200)
-            items = TheaterItem.group(list)
+            // 分页拉全：同一部剧的不同季可能落在不同页，只取第一页会导致多季合并失效
+            var all: [Series] = []
+            var seen = Set<Int64>()
+            var page = 1
+            let pageSize = 200
+            while page <= 50 {
+                let chunk = try await ApiService.shared.series(page: page, limit: pageSize)
+                let fresh = chunk.filter { seen.insert($0.id).inserted }
+                all.append(contentsOf: fresh)
+                if chunk.count < pageSize || fresh.isEmpty { break }
+                page += 1
+            }
+            items = TheaterItem.group(all)
+            if items.isEmpty {
+                self.error = "暂无剧集"
+            }
         } catch {
             self.error = "加载失败：\((error as? LocalizedError)?.errorDescription ?? error.localizedDescription)"
         }
