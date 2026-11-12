@@ -371,7 +371,8 @@ struct TheaterScreen: View {
             items = grouped
             // 诊断：记录原始条数 / 聚合后条目数 / 多季组数，供长按标题查看
             let multiCount = grouped.filter { $0.isMulti }.count
-            diagnoseText = "原始 \(all.count) 条 → 聚合 \(grouped.count) 项 · 多季 \(multiCount) 组"
+            let parsedCount = all.filter { SeasonParser.parse($0.title).season > 0 }.count
+            diagnoseText = "原始 \(all.count) 条 → 解析出季号 \(parsedCount) 条 · 聚合 \(grouped.count) 项 · 多季 \(multiCount) 组"
             if items.isEmpty {
                 self.error = "暂无剧集"
             }
