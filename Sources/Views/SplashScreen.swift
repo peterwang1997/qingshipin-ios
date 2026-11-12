@@ -1,4 +1,4 @@
-import SwiftUI
+﻿import SwiftUI
 
 /// 启动页：Logo 呼吸动画 + 服务器探测提示
 struct SplashScreen: View {
@@ -24,7 +24,7 @@ struct SplashScreen: View {
                     .scaleEffect(scale)
                     .opacity(opacity)
             }
-            Text("轻视频")
+            Text("月半追剧")
                 .font(.system(size: 28, weight: .bold))
                 .foregroundColor(Theme.textPrimary)
                 .opacity(opacity)

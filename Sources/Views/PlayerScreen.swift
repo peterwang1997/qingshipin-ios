@@ -142,33 +142,7 @@ struct PlayerScreen: View {
                 }
                 .allowsHitTesting(false)
 
-                // 全屏时常驻的退出按钮：不依赖会自动隐藏的顶栏
-                if isFullscreen {
-                    VStack {
-                        HStack {
-                            Spacer()
-                            Button {
-                                toggleFullscreen()
-                            } label: {
-                                HStack(spacing: 5) {
-                                    Image(systemName: "arrow.down.right.and.arrow.up.left")
-                                        .font(.system(size: 12, weight: .bold))
-                                    Text("退出全屏")
-                                        .font(.system(size: 12, weight: .semibold))
-                                }
-                                .foregroundColor(.white)
-                                .padding(.horizontal, 12)
-                                .padding(.vertical, 7)
-                                .background(Capsule().fill(Color.black.opacity(0.55)))
-                                .overlay(Capsule().stroke(Color.white.opacity(0.22), lineWidth: 0.6))
-                            }
-                            .padding(.trailing, 14)
-                            .padding(.top, UIApplication.shared.keyWindowTopInset() + 6)
-                        }
-                        Spacer()
-                    }
-                    .transition(.opacity)
-                }
+
 
                 // 切换集的上下提示
                 if episodesCount > 1 {
@@ -184,6 +158,21 @@ struct PlayerScreen: View {
                     .padding(.vertical, 92)
                     .allowsHitTesting(false)
                     .opacity(showTopBar ? 1 : 0.35)
+                }
+
+                // 全屏退出按钮：置于最上层，与顶栏的显示状态完全解耦，永不被遮挡
+                if isFullscreen {
+                    VStack {
+                        HStack {
+                            Spacer()
+                            fullscreenExitButton
+                        }
+                        Spacer()
+                    }
+                    .padding(.top, UIApplication.shared.keyWindowTopInset() + 8)
+                    .padding(.trailing, 14)
+                    .ignoresSafeArea(edges: .top)
+                    .zIndex(10)
                 }
             }
         }
@@ -222,6 +211,27 @@ struct PlayerScreen: View {
                            startPoint: .top, endPoint: .bottom)
                 .ignoresSafeArea(edges: .top)
         )
+    }
+
+    /// 全屏退出按钮（常驻，不受顶栏自动隐藏影响）
+    private var fullscreenExitButton: some View {
+        Button {
+            toggleFullscreen()
+        } label: {
+            HStack(spacing: 5) {
+                Image(systemName: "arrow.down.right.and.arrow.up.left")
+                    .font(.system(size: 12, weight: .bold))
+                Text("退出全屏")
+                    .font(.system(size: 12, weight: .semibold))
+            }
+            .foregroundColor(.white)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(Capsule().fill(Color.black.opacity(0.66)))
+            .overlay(Capsule().stroke(Color.white.opacity(0.3), lineWidth: 0.6))
+            .contentShape(Capsule())
+        }
+        .buttonStyle(.plain)
     }
 
     private var topBarContent: some View {
@@ -668,7 +678,6 @@ struct PlayerScreen: View {
             toast("横板视频已自动全屏")
         }
         showTopBarWithAutoHide(seconds: 4)
-        topBarHideTask?.cancel()
     }
 
     /// 横屏时用户把手机转回竖屏 → 自动退出全屏（多一条退出路径）

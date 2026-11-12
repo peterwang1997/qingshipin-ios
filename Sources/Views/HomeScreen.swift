@@ -62,7 +62,7 @@ struct HomeScreen: View {
                                 Image(systemName: "play.circle.fill")
                                     .font(.system(size: 17, weight: .semibold))
                                     .foregroundColor(Theme.primary)
-                                Text("轻视频")
+                                Text("月半追剧")
                                     .font(.system(size: 16, weight: .semibold))
                                     .foregroundColor(.white)
                                 Spacer()

@@ -5,9 +5,14 @@ import Foundation
 enum Prefs {
     private static let defaults = UserDefaults.standard
 
+    /// 记住上次成功登录的用户名；从未登录过则为空，登录页不预填
     static var lastUsername: String {
-        get { defaults.string(forKey: "last_username") ?? "wangyunte" }
-        set { defaults.set(newValue, forKey: "last_username") }
+        get { defaults.string(forKey: "last_username") ?? "" }
+        set {
+            let v = newValue.trimmingCharacters(in: .whitespaces)
+            if v.isEmpty { defaults.removeObject(forKey: "last_username") }
+            else { defaults.set(v, forKey: "last_username") }
+        }
     }
 
     /// 某剧集最近一次播放的视频 id，供剧场封面续播兜底

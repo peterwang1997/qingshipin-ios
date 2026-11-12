@@ -64,8 +64,29 @@ enum TheaterItem: Identifiable, Equatable {
 
         return order.compactMap { key -> TheaterItem? in
             guard let bucket = buckets[key], !bucket.items.isEmpty else { return nil }
-            // 季号 0 视为唯一一季，排在最后
-            let sorted = bucket.items
+
+            // 后端存在「无季号标题」= 第一季的情况（如“咱家剑宗团宠小师妹”配“...第二季”）
+            // 该组已有真实季号且缺第 1 季时，把无季号那条视为第一季
+            let hasSeasonOne = bucket.items.contains { $0.season == 1 }
+            let hasRealSeason = bucket.items.contains { $0.season > 0 }
+            var entries = bucket.items
+            if hasRealSeason && !hasSeasonOne {
+                entries = entries.map { entry in
+                    entry.season == 0 ? (entry.series, 1) : entry
+                }
+            }
+
+            // 同季号重复（如“...第二季”与“...之第二季”）只保留一条
+            var seenSeasons = Set<Int>()
+            var deduped: [(series: Series, season: Int)] = []
+            for entry in entries {
+                if seenSeasons.insert(entry.season).inserted {
+                    deduped.append(entry)
+                }
+            }
+
+            // 季号 0 视为未知，排在最后
+            let sorted = deduped
                 .enumerated()
                 .sorted { a, b in
                     let sa = a.element.season == 0 ? Int.max : a.element.season
@@ -78,12 +99,12 @@ enum TheaterItem: Identifiable, Equatable {
             if sorted.count <= 1 {
                 return .single(sorted[0])
             }
-            // 多季里若存在真实季号，标题用解析出的根名；否则用第一条标题
-            let hasRealSeason = bucket.items.contains { $0.season > 0 }
             let title = hasRealSeason ? bucket.root : (sorted.first?.displayTitle ?? bucket.root)
             return .multi(rootTitle: title, seasons: sorted)
         }
     }
+
+    /// 
 
     /// 分组键归一化：去空白、统一括号与标点、全角转半角、忽略大小写
     static func normalizeKey(_ s: String) -> String {

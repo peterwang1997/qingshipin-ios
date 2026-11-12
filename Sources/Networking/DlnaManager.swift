@@ -293,7 +293,7 @@ final class DlnaManager {
     }
 
     private func buildMetadata(url: String, title: String?) -> String {
-        let t = escapeXML(title?.isEmpty == false ? title! : "轻视频")
+        let t = escapeXML(title?.isEmpty == false ? title! : "月半追剧")
         let escapedURL = url.replacingOccurrences(of: "&", with: "&amp;")
         return "<DIDL-Lite xmlns=\"urn:schemas-upnp-org:metadata-1-0/DIDL-Lite/\" " +
             "xmlns:dc=\"http://purl.org/dc/elements/1.1/\" " +

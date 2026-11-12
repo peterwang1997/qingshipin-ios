@@ -61,7 +61,7 @@ struct LoginScreen: View {
             }
             .padding(.top, Screen.isCompactHeight ? 44 : 84)
 
-            Text("轻视频")
+            Text("月半追剧")
                 .font(.system(size: 27, weight: .bold))
                 .foregroundColor(Theme.textPrimary)
                 .padding(.top, 8)

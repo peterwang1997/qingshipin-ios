@@ -95,7 +95,7 @@ struct ProfileScreen: View {
             divider
             menuRow(icon: "info.circle", title: "关于项目", tint: Theme.textSecondary,
                     detail: "v1.3.0") {
-                toast("轻视频 iOS v1.3.0 · 对接后端 1.1.5")
+                toast("月半追剧 iOS v1.3.0 · 后端 1.1.5")
             }
             divider
         }
@@ -169,7 +169,7 @@ struct ProfileScreen: View {
     }
 
     private var footer: some View {
-        Text("轻视频 LiteVideo · 连接飞牛 NAS 私人影库")
+        Text("月半追剧 · 连接飞牛 NAS 私人影库")
             .font(.system(size: 11))
             .foregroundColor(Theme.textSecondary.opacity(0.65))
             .padding(.top, 26)
