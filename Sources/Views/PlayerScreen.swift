@@ -139,6 +139,34 @@ struct PlayerScreen: View {
                 }
                 .allowsHitTesting(false)
 
+                // 全屏时常驻的退出按钮：不依赖会自动隐藏的顶栏
+                if isFullscreen {
+                    VStack {
+                        HStack {
+                            Spacer()
+                            Button {
+                                toggleFullscreen()
+                            } label: {
+                                HStack(spacing: 5) {
+                                    Image(systemName: "arrow.down.right.and.arrow.up.left")
+                                        .font(.system(size: 12, weight: .bold))
+                                    Text("退出全屏")
+                                        .font(.system(size: 12, weight: .semibold))
+                                }
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 7)
+                                .background(Capsule().fill(Color.black.opacity(0.55)))
+                                .overlay(Capsule().stroke(Color.white.opacity(0.22), lineWidth: 0.6))
+                            }
+                            .padding(.trailing, 14)
+                            .padding(.top, UIApplication.shared.keyWindowTopInset() + 6)
+                        }
+                        Spacer()
+                    }
+                    .transition(.opacity)
+                }
+
                 // 切换集的上下提示
                 if episodesCount > 1 {
                     VStack {
@@ -168,6 +196,9 @@ struct PlayerScreen: View {
         .onChange(of: engine.duration) { _ in
             // 播放器就绪后立刻应用续播位置
             applyResumeSeek()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: UIDevice.orientationDidChangeNotification)) { _ in
+            handleOrientationChange()
         }
     }
 
@@ -337,15 +368,15 @@ struct PlayerScreen: View {
     }
 
     /// 呼出顶栏，并在 3 秒后自动淡出（安卓端为常驻，这里按需求自动隐藏）
-    private func showTopBarWithAutoHide() {
+    private func showTopBarWithAutoHide(seconds: Double = 3) {
         withAnimation(.easeOut(duration: 0.18)) { showTopBar = true }
-        scheduleTopBarHide()
+        scheduleTopBarHide(seconds: seconds)
     }
 
-    private func scheduleTopBarHide() {
+    private func scheduleTopBarHide(seconds: Double = 3) {
         topBarHideTask?.cancel()
         topBarHideTask = Task {
-            try? await Task.sleep(nanoseconds: 3_000_000_000)
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             guard !Task.isCancelled else { return }
             hideTopBar()
         }
@@ -599,10 +630,24 @@ struct PlayerScreen: View {
         isFullscreen.toggle()
         if isFullscreen {
             OrientationManager.shared.allowAllButUpsideDown()
-            withAnimation(.easeInOut(duration: 0.2)) { showTopBar = false }
+            // 进入全屏时把顶栏呼出并留足停留时间，避免隐藏后找不到退出入口
+            showTopBarWithAutoHide(seconds: 4)
         } else {
             OrientationManager.shared.lockPortrait()
-            withAnimation(.easeInOut(duration: 0.2)) { showTopBar = true }
+            showTopBarWithAutoHide(seconds: 3)
+        }
+        topBarHideTask?.cancel()
+    }
+
+    /// 横屏时用户把手机转回竖屏 → 自动退出全屏（多一条退出路径）
+    private func handleOrientationChange() {
+        guard isFullscreen else { return }
+        let scene = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.first
+        guard let geo = scene?.interfaceOrientation else { return }
+        if geo.isPortrait {
+            isFullscreen = false
+            OrientationManager.shared.lockPortrait()
+            showTopBarWithAutoHide(seconds: 3)
         }
     }
 

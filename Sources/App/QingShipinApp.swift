@@ -20,6 +20,8 @@ struct QingShipinApp: App {
 final class AppDelegate: NSObject, UIApplicationDelegate {
     func application(_ application: UIApplication,
                      didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil) -> Bool {
+        // 方向监听用于「横屏转回竖屏自动退出全屏」
+        UIDevice.current.beginGeneratingDeviceOrientationNotifications()
         // 播放器需要在静音键打开时也能出声
         try? Self.configureAudioSession()
         return true
