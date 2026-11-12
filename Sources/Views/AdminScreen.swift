@@ -1,4 +1,4 @@
-import SwiftUI
+﻿import SwiftUI
 
 /// 管理后台：媒体库路径管理 + 用户管理（对应 AdminActivity）
 struct AdminScreen: View {
@@ -339,7 +339,6 @@ struct AdminScreen: View {
             }
             .padding(20)
         }
-        .presentationDetents([.height(340)])
     }
 
     private func resetPasswordSheet(_ target: AdminUserRow) -> some View {
@@ -386,7 +385,6 @@ struct AdminScreen: View {
             }
             .padding(20)
         }
-        .presentationDetents([.height(250)])
     }
 
     private func inputField(_ placeholder: String, text: Binding<String>) -> some View {

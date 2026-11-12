@@ -145,7 +145,7 @@ struct HomeScreen: View {
     private func feedLayer(size: CGSize) -> some View {
         ZStack {
             PlayerLayerView(player: engine.player, gravity: .resizeAspect)
-                .frame(width: size.width, height: size.height)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .background(Color.black)
 
             if engine.isBuffering || engine.failed {

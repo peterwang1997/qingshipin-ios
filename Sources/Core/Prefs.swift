@@ -1,3 +1,4 @@
+﻿import UIKit
 import Foundation
 
 /// 本地持久化：对应安卓 SharedPreferences("qingshipin_prefs")

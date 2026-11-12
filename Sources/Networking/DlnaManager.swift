@@ -1,4 +1,5 @@
-﻿import Foundation
+﻿import UIKit
+import Foundation
 import Darwin
 
 /// 一个 DLNA 投屏接收端设备（DMR）

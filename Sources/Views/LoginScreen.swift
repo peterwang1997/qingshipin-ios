@@ -27,7 +27,6 @@ struct LoginScreen: View {
                 .frame(maxWidth: 560)
                 .frame(maxWidth: .infinity)
             }
-            .scrollDismissesKeyboard(.interactively)
         }
         .onTapGesture { focused = nil }
         .onChange(of: appState.serverURL) { newValue in

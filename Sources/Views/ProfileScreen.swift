@@ -1,4 +1,4 @@
-import SwiftUI
+﻿import SwiftUI
 
 /// 我的页：用户信息、观看历史、管理后台、退出登录（对应 ProfileFragment）
 struct ProfileScreen: View {
@@ -36,7 +36,6 @@ struct ProfileScreen: View {
         }
         .sheet(isPresented: $showServerSheet) {
             ServerInfoSheet(server: ApiClient.shared.baseURL)
-                .presentationDetents([.height(280)])
         }
         .confirmationDialog("退出登录后需要重新输入账号密码", isPresented: $showLogoutConfirm, titleVisibility: .visible) {
             Button("退出登录", role: .destructive) {

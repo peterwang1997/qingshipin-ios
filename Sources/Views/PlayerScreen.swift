@@ -395,7 +395,7 @@ struct PlayerScreen: View {
         if seriesId > 0 {
             loadEpisodes()
         } else {
-            resumeFromServer()
+            Task { await resumeFromServer() }
         }
         startProgressReporter()
     }
@@ -602,8 +602,6 @@ struct PlayerScreen: View {
                 }
             }
         }
-        .presentationDetents([.fraction(0.62), .large])
-        .presentationDragIndicator(.visible)
     }
 
     private func episodeCell(_ ep: VideoItem, index: Int) -> some View {
@@ -732,8 +730,6 @@ struct PlayerScreen: View {
                 }
             }
         }
-        .presentationDetents([.medium, .large])
-        .presentationDragIndicator(.visible)
     }
 
     private func searchAndCast() async {

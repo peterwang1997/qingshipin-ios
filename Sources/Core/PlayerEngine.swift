@@ -1,4 +1,5 @@
-﻿import AVFoundation
+﻿import SwiftUI
+import AVFoundation
 import UIKit
 import Combine
 
@@ -67,13 +68,14 @@ final class PlayerEngine: ObservableObject {
         failed = false
         isBuffering = true
 
-        let asset = AVURLAsset(url: u, options: [AVURLAssetHTTPHeaderFieldsKey: ["User-Agent": "QingShipin-iOS/1.3"]])
+        let options: [String: Any] = ["AVURLAssetHTTPHeaderFieldsKey": ["User-Agent": "QingShipin-iOS/1.3"]]
+        let asset = AVURLAsset(url: u, options: options)
         let item = AVPlayerItem(asset: asset)
         item.preferredForwardBufferDuration = 5
 
-        itemStatusObservation = item.observe(\.status, options: [.new]) { [weak self] item, _ in
-            let status = item.status
-            let dur = item.duration.seconds
+        itemStatusObservation = item.observe(\AVPlayerItem.status, options: [.new]) { [weak self] observed, _ in
+            let status = observed.status
+            let dur = observed.duration.seconds
             DispatchQueue.main.async {
                 guard let self else { return }
                 switch status {

@@ -122,8 +122,6 @@ struct TheaterScreen: View {
                 seasonPicker = nil
                 openSeries(series, resumeVideoId: resumeVideoId)
             })
-            .presentationDetents([.large])
-            .presentationDragIndicator(.visible)
         }
     }
 
